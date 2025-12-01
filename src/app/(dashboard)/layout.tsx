@@ -45,8 +45,8 @@ export default async function DashboardLayout({
                         <Link href={`/dashboard/${orgs[0].org_id}`} className="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900">
                             Campaigns
                         </Link>
-                        <Link href={`/dashboard/${orgs[0].org_id}/brand`} className="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900">
-                            Brand Kit
+                        <Link href={`/dashboard/${orgs[0].org_id}/brand-kits`} className="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900">
+                            Brand Kits
                         </Link>
                         <Link href={`/dashboard/${orgs[0].org_id}/assets`} className="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900">
                             Assets
