@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/db/server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import { Organization } from '@/modules/auth/types';
 
 export async function createOrganization(formData: FormData) {
     const name = formData.get('name') as string;
@@ -15,40 +16,27 @@ export async function createOrganization(formData: FormData) {
         return { error: 'Not authenticated' };
     }
 
-    // 1. Create Organization
-    const { data: org, error: orgError } = await supabase
-        .from('organizations')
-        .insert({
-            name,
-            slug,
-            billing_plan: 'free',
-            credits_balance: 100, // Free credits
-        })
-        .select()
-        .single();
+    // 1. Create Organization & Membership via RPC (Security Definer)
+    // This avoids RLS issues where the user can't see the org they just created
+    // because the membership hasn't been committed/visible yet.
+    const { data: org, error: orgError } = await supabase.rpc('create_organization_with_owner', {
+        _name: name,
+        _slug: slug
+    }).single();
 
     if (orgError) {
-        if (orgError.code === '23505') { // Unique violation for slug
+        if (orgError.message?.includes('unique constraint') || orgError.code === '23505') {
             return { error: 'Organization with this name already exists. Please try another.' };
         }
         return { error: orgError.message };
     }
 
-    // 2. Create Membership (Owner)
-    const { error: memberError } = await supabase
-        .from('organization_memberships')
-        .insert({
-            org_id: org.id,
-            user_id: user.id,
-            role: 'owner',
-        });
-
-    if (memberError) {
-        // Cleanup org if membership fails (optional, but good practice)
-        await supabase.from('organizations').delete().eq('id', org.id);
-        return { error: memberError.message };
+    if (!org) {
+        return { error: 'Failed to create organization' };
     }
 
+    // 2. Membership is created automatically by the RPC function.
+
     revalidatePath('/dashboard');
-    redirect(`/dashboard/${org.id}`);
+    redirect(`/dashboard/${(org as Organization).id}`);
 }
