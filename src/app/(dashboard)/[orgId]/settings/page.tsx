@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import InviteMemberDialog from '@/components/settings/invite-member-dialog';
 import InvitationList from '@/components/settings/invitation-list';
 import { getInvitations } from '@/modules/invitations/service';
+import { getCurrentUser, checkOrgAccess } from '@/modules/auth/service';
+import { redirect } from 'next/navigation';
 
 async function getOrgDetails(orgId: string) {
     const supabase = await createClient();
@@ -25,8 +27,17 @@ async function getOrgDetails(orgId: string) {
 
 export default async function SettingsPage({ params }: { params: Promise<{ orgId: string }> }) {
     const { orgId } = await params;
+    const user = await getCurrentUser();
+
+    if (!user) {
+        redirect('/login');
+    }
+
+    const userRole = await checkOrgAccess(user.id, orgId);
     const { org, members } = await getOrgDetails(orgId);
     const invitations = await getInvitations(orgId);
+
+    const canManageTeam = userRole === 'owner' || userRole === 'admin';
 
     return (
         <div className="p-8 max-w-4xl">
@@ -71,7 +82,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ orgId
                             <CardTitle>Team Members</CardTitle>
                             <CardDescription>Manage who has access to this workspace.</CardDescription>
                         </div>
-                        <InviteMemberDialog orgId={orgId} />
+                        {canManageTeam && <InviteMemberDialog orgId={orgId} />}
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
@@ -94,7 +105,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ orgId
                             ))}
                         </div>
 
-                        <InvitationList invitations={invitations} orgId={orgId} />
+                        <InvitationList invitations={invitations} orgId={orgId} canManage={canManageTeam} />
                     </CardContent>
                 </Card>
             </div>

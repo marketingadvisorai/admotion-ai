@@ -6,7 +6,7 @@ import { revokeInvitationAction } from '@/modules/invitations/actions';
 import { Trash2, Copy, Check } from 'lucide-react';
 import { useActionState, useState } from 'react';
 
-export default function InvitationList({ invitations, orgId }: { invitations: Invitation[], orgId: string }) {
+export default function InvitationList({ invitations, orgId, canManage }: { invitations: Invitation[], orgId: string, canManage: boolean }) {
     if (invitations.length === 0) return null;
 
     return (
@@ -21,7 +21,7 @@ export default function InvitationList({ invitations, orgId }: { invitations: In
                         </div>
                         <div className="flex items-center gap-2">
                             <CopyLinkButton token={invite.token} />
-                            <RevokeButton id={invite.id} orgId={orgId} />
+                            {canManage && <RevokeButton id={invite.id} orgId={orgId} />}
                         </div>
                     </div>
                 ))}
