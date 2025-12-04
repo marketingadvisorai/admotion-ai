@@ -25,6 +25,21 @@ export async function generateStrategyAction(campaignId: string, modelSlug = 'gp
     }
 }
 
+export async function generateStrategyFromPromptAction(formData: FormData) {
+    const campaignId = formData.get('campaignId') as string;
+    const orgId = formData.get('orgId') as string;
+    const prompt = formData.get('prompt') as string;
+    const modelSlug = (formData.get('modelSlug') as string | null) || 'gpt-5.1';
+
+    try {
+        const strategy = await AgentService.generateStrategy(campaignId, modelSlug, prompt);
+        revalidatePath(`/dashboard/${orgId}/campaigns/${campaignId}`);
+        return { success: true, strategy };
+    } catch (error: any) {
+        return { error: error.message };
+    }
+}
+
 export async function updateStrategyAction(campaignId: string, strategy: CampaignStrategy) {
     try {
         const supabase = await createClient();

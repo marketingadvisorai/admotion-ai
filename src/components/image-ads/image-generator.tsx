@@ -13,7 +13,6 @@ import { GeneratedGrid, GeneratedImage } from './generated-grid';
 import { ImageStyle } from './style-selector';
 import { BrandKit } from '@/modules/brand-kits/types';
 import { LlmProfile } from '@/modules/llm/types';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type AspectRatio = '3:2' | '1:1' | '2:3';
 
@@ -30,15 +29,6 @@ interface ImageGeneratorProps {
   brandKits: BrandKit[];
   llmProfiles: LlmProfile[];
   orgId: string;
-}
-
-interface ImageRecipe {
-  id: string;
-  name: string;
-  model: string;
-  aspect: AspectRatio;
-  style: ImageStyle;
-  prompt: string;
 }
 
 const aspectOptions: AspectOption<AspectRatio>[] = [
@@ -108,7 +98,8 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
   );
   const [selectedAspect, setSelectedAspect] = useState<AspectRatio>('1:1');
   const [selectedStyle, setSelectedStyle] = useState<ImageStyle>('clean_modern');
-  const [selectedLlmProfile, setSelectedLlmProfile] = useState<string>(() => llmProfiles[0]?.slug || 'gpt-5.1');
+  const initialModel = llmProfiles.find((p) => ['gpt-5.1', 'nano-banana'].includes(p.slug))?.slug || 'gpt-5.1';
+  const [selectedLlmProfile, setSelectedLlmProfile] = useState<string>(initialModel);
   const [selectedBrandKitId, setSelectedBrandKitId] = useState<string>(brandKitOptions[0]?.id || '');
   const [selectedAnalyzerId, setSelectedAnalyzerId] = useState<string>('');
   const [brandMode, setBrandMode] = useState<BrandMode>(brandKitOptions.length ? 'kit' : 'none');
@@ -118,72 +109,7 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
-  const [recipes, setRecipes] = useState<ImageRecipe[]>([]);
-  const [selectedRecipeId, setSelectedRecipeId] = useState<string>('none');
 
-  const imagePresets: Array<{ id: string; label: string; aspect: AspectRatio; style: ImageStyle; prompt: string; badge?: string }> = [
-    {
-      id: 'fb-feed',
-      label: 'FB Feed',
-      aspect: '1:1',
-      style: 'clean_modern',
-      prompt: 'Facebook feed ad: bold headline, 2 benefits, CTA button copy, keep it punchy.',
-      badge: 'Square',
-    },
-    {
-      id: 'ig-story',
-      label: 'IG Story',
-      aspect: '2:3',
-      style: 'bold',
-      prompt: 'Instagram story ad: vertical framing, safe zones, quick hook, swipe-up CTA.',
-      badge: 'Vertical',
-    },
-    {
-      id: 'linkedin',
-      label: 'LinkedIn',
-      aspect: '3:2',
-      style: 'minimalist',
-      prompt: 'LinkedIn ad: professional tone, ROI stat, CTA to download/demo, clear logo lockup.',
-      badge: 'Landscape',
-    },
-  ];
-
-  const applyImagePreset = (presetId: string) => {
-    const preset = imagePresets.find((p) => p.id === presetId);
-    if (!preset) return;
-    setSelectedAspect(preset.aspect);
-    setSelectedStyle(preset.style);
-    setPrompt(preset.prompt);
-  };
-
-  const saveRecipe = () => {
-    const name = window.prompt('Name this recipe');
-    if (!name) return;
-    const recipe: ImageRecipe = {
-      id: crypto.randomUUID(),
-      name,
-      model: selectedLlmProfile,
-      aspect: selectedAspect,
-      style: selectedStyle,
-      prompt,
-    };
-    setRecipes((prev) => [recipe, ...prev]);
-    setSelectedRecipeId(recipe.id);
-  };
-
-  const applyRecipe = (id: string) => {
-    if (id === 'none') {
-      setSelectedRecipeId('none');
-      return;
-    }
-    const recipe = recipes.find((r) => r.id === id);
-    if (!recipe) return;
-    setSelectedLlmProfile(recipe.model);
-    setSelectedAspect(recipe.aspect);
-    setSelectedStyle(recipe.style);
-    setPrompt(recipe.prompt);
-    setSelectedRecipeId(recipe.id);
-  };
 
   const selectedBrandKit = useMemo(
     () => brandKitOptions.find((kit) => kit.id === selectedBrandKitId),
@@ -301,22 +227,6 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
           </h1>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          {imagePresets.map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              onClick={() => applyImagePreset(preset.id)}
-              className="rounded-xl border border-white/70 bg-white/90 px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:shadow"
-            >
-              <span className="mr-2 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
-                {preset.badge}
-              </span>
-              {preset.label}
-            </button>
-          ))}
-        </div>
-
         <div className="flex justify-center">
           <div className="w-full max-w-3xl">
             <div className="relative">
@@ -372,24 +282,6 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
                     <AspectDropdown value={selectedAspect} options={aspectOptions} onChange={setSelectedAspect} />
                     <StyleDropdown value={selectedStyle} options={styleOptions} onChange={setSelectedStyle} />
                     <ModelDropdown profiles={llmProfiles} value={selectedLlmProfile} onChange={setSelectedLlmProfile} />
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" className="rounded-full" onClick={saveRecipe}>
-                        Save recipe
-                      </Button>
-                      <Select value={selectedRecipeId} onValueChange={applyRecipe}>
-                        <SelectTrigger size="sm" className="rounded-full bg-white/80 text-slate-800">
-                          <SelectValue placeholder="Apply recipe" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          {recipes.map((recipe) => (
-                            <SelectItem key={recipe.id} value={recipe.id}>
-                              {recipe.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </div>
 
                   <div className="flex items-center gap-2">

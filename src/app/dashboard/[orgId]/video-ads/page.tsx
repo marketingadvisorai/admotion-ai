@@ -3,7 +3,6 @@ import { Metadata } from 'next';
 import { getCurrentUser, getUserProfile } from '@/modules/auth/service';
 import { getBrandKits } from '@/modules/brand-kits/service';
 import { getActiveLlmProfiles } from '@/modules/llm/service';
-import { getAllProviders } from '@/modules/generation/providers/factory';
 import { VideoGenerator } from '@/components/video-ads/video-generator';
 
 export const metadata: Metadata = {
@@ -23,15 +22,12 @@ export default async function VideoAdsPage({ params }: { params: { orgId: string
 
     const brandKits = orgId ? await getBrandKits(orgId) : [];
     const llmProfiles = await getActiveLlmProfiles();
-    const providers = getAllProviders().map((p) => ({ id: p.id, name: p.name }));
-
     return (
         <div className="flex-1 w-full">
             <VideoGenerator
                 displayName={displayName}
                 brandKits={brandKits}
                 llmProfiles={llmProfiles}
-                providers={providers}
                 orgId={orgId}
             />
         </div>

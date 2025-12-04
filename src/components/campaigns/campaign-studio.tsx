@@ -8,12 +8,14 @@ import { VideoPlayer } from '@/components/campaigns/video-player';
 import { mapStrategyToVideoProps } from '@/modules/campaigns/video-service';
 import GenerationDialog from '@/components/campaigns/generation-dialog';
 import ImageGenerationDialog from '@/components/campaigns/image-generation-dialog';
+import StrategyGenerationDialog from '@/components/campaigns/strategy-generation-dialog';
 import GenerationList from '@/components/campaigns/generation-list';
 import { ImageList } from '@/components/campaigns/image-list';
 import { CheckCircle, Clapperboard, ImageIcon, LayoutDashboard, Library } from 'lucide-react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { VideoBlueprintEditor } from '@/components/campaigns/video-blueprint-editor';
+import { Separator } from '@/components/ui/separator';
 
 interface CampaignStudioProps {
     campaign: Campaign;
@@ -22,9 +24,9 @@ interface CampaignStudioProps {
 
 export function CampaignStudio({ campaign, orgId }: CampaignStudioProps) {
     return (
-        <div className="flex flex-col h-[calc(100vh-64px)]">
+        <div className="flex flex-col h-[calc(100dvh-64px)]">
             {/* Header */}
-            <div className="border-b bg-white px-6 py-4 flex items-center justify-between shrink-0">
+            <div className="border-b bg-white px-4 md:px-6 py-4 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-4">
                     <Link
                         href={`/dashboard/${orgId}`}
@@ -32,14 +34,14 @@ export function CampaignStudio({ campaign, orgId }: CampaignStudioProps) {
                     >
                         <ArrowLeft className="w-5 h-5" />
                     </Link>
-                    <div>
-                        <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                            {campaign.name}
-                            <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium capitalize">
+                    <div className="min-w-0">
+                        <h1 className="text-lg md:text-xl font-bold text-gray-900 flex items-center gap-2 truncate">
+                            <span className="truncate">{campaign.name}</span>
+                            <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium capitalize shrink-0">
                                 {campaign.status.replace('_', ' ')}
                             </span>
                         </h1>
-                        <p className="text-sm text-gray-500 capitalize">
+                        <p className="text-xs md:text-sm text-gray-500 capitalize truncate">
                             {campaign.platform?.replace('_', ' ') || 'Multi-Platform'} • {campaign.duration || '30'}s • {campaign.aspect_ratio || '9:16'}
                         </p>
                     </div>
@@ -52,8 +54,8 @@ export function CampaignStudio({ campaign, orgId }: CampaignStudioProps) {
             {/* Main Content */}
             <div className="flex-1 overflow-hidden bg-gray-50">
                 <Tabs defaultValue="studio" className="h-full flex flex-col">
-                    <div className="px-6 border-b bg-white shrink-0">
-                        <TabsList className="h-12 w-full justify-start bg-transparent p-0 space-x-6">
+                    <div className="px-4 md:px-6 border-b bg-white shrink-0 overflow-x-auto scrollbar-hide">
+                        <TabsList className="h-12 w-full justify-start bg-transparent p-0 space-x-6 min-w-max">
                             <TabsTrigger
                                 value="studio"
                                 className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none h-full px-0 font-medium"
@@ -79,10 +81,10 @@ export function CampaignStudio({ campaign, orgId }: CampaignStudioProps) {
                     </div>
 
                     {/* Studio Tab */}
-                    <TabsContent value="studio" className="flex-1 overflow-y-auto p-6 m-0">
+                    <TabsContent value="studio" className="flex-1 overflow-y-auto p-4 md:p-6 m-0">
                         <div className="max-w-6xl mx-auto space-y-6">
                             <Tabs defaultValue="video" className="w-full">
-                                <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center justify-between mb-6 overflow-x-auto">
                                     <TabsList>
                                         <TabsTrigger value="video">
                                             <Clapperboard className="w-4 h-4 mr-2" />
@@ -121,7 +123,7 @@ export function CampaignStudio({ campaign, orgId }: CampaignStudioProps) {
                                                             )}
                                                         />
                                                     ) : (
-                                                        <div className="h-[400px] flex items-center justify-center bg-gray-100 rounded-lg text-gray-400">
+                                                        <div className="h-[300px] md:h-[400px] flex items-center justify-center bg-gray-100 rounded-lg text-gray-400">
                                                             No strategy available
                                                         </div>
                                                     )}
@@ -152,15 +154,18 @@ export function CampaignStudio({ campaign, orgId }: CampaignStudioProps) {
                     </TabsContent>
 
                     {/* Strategy Tab */}
-                    <TabsContent value="strategy" className="flex-1 overflow-y-auto p-6 m-0">
-                        <div className="max-w-4xl mx-auto">
+                    <TabsContent value="strategy" className="flex-1 overflow-y-auto p-4 md:p-6 m-0">
+                        <div className="max-w-4xl mx-auto space-y-6">
+                            <div className="flex justify-end">
+                                <StrategyGenerationDialog orgId={orgId} campaignId={campaign.id} />
+                            </div>
                             {campaign.strategy ? (
                                 <Card>
                                     <CardHeader>
                                         <CardTitle>Campaign Strategy</CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-6">
-                                        <div className="grid grid-cols-2 gap-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div>
                                                 <h4 className="font-semibold text-sm mb-2 text-gray-500 uppercase">Target Audience</h4>
                                                 <p className="text-gray-900">{campaign.strategy.target_audience}</p>
@@ -184,7 +189,7 @@ export function CampaignStudio({ campaign, orgId }: CampaignStudioProps) {
                                             <h4 className="font-semibold text-sm mb-2 text-gray-500 uppercase">Script Breakdown</h4>
                                             <div className="space-y-4">
                                                 {campaign.strategy.script.map((scene, i) => (
-                                                    <div key={i} className="flex gap-4 p-4 border rounded-lg bg-gray-50">
+                                                    <div key={i} className="flex flex-col md:flex-row gap-4 p-4 border rounded-lg bg-gray-50">
                                                         <div className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-white border font-bold text-gray-500">
                                                             {scene.scene}
                                                         </div>
@@ -202,15 +207,16 @@ export function CampaignStudio({ campaign, orgId }: CampaignStudioProps) {
                                     </CardContent>
                                 </Card>
                             ) : (
-                                <div className="text-center py-12 text-gray-500">
-                                    No strategy generated yet.
+                                <div className="text-center py-12 text-gray-500 bg-white rounded-lg border border-dashed">
+                                    <p className="mb-4">No strategy generated yet.</p>
+                                    <StrategyGenerationDialog orgId={orgId} campaignId={campaign.id} />
                                 </div>
                             )}
                         </div>
                     </TabsContent>
 
                     {/* Assets Tab */}
-                    <TabsContent value="assets" className="flex-1 overflow-y-auto p-6 m-0">
+                    <TabsContent value="assets" className="flex-1 overflow-y-auto p-4 md:p-6 m-0">
                         <div className="max-w-6xl mx-auto space-y-8">
                             <div>
                                 <h2 className="text-lg font-semibold mb-4">Video Library</h2>
@@ -229,4 +235,4 @@ export function CampaignStudio({ campaign, orgId }: CampaignStudioProps) {
     );
 }
 
-import { Separator } from '@/components/ui/separator';
+

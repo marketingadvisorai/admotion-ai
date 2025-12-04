@@ -81,7 +81,7 @@ export class AgentService {
         return aiResponse;
     }
 
-    static async generateStrategy(campaignId: string, modelSlug = 'gpt-5.1'): Promise<CampaignStrategy> {
+    static async generateStrategy(campaignId: string, modelSlug = 'gpt-5.1', prompt?: string): Promise<CampaignStrategy> {
         const supabase = await createClient();
 
         const { data: campaign, error } = await supabase
@@ -106,6 +106,7 @@ export class AgentService {
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 ...(history as any),
+                ...(prompt ? [{ role: 'user', content: `Here is the context for the strategy: ${prompt}` }] : []),
                 { role: 'system', content: STRATEGY_PROMPT }
             ],
             response_format: { type: "json_object" }

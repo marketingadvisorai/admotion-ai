@@ -19,18 +19,11 @@ interface ModelDropdownProps {
 
 export function ModelDropdown({ profiles, value, onChange, extraOptions = [] }: ModelDropdownProps) {
   const builtIns: ModelOption[] = [
-    { value: 'gpt-5.1', label: 'GPT 5.1', detail: 'OpenAI', bestFor: 'Precision copy, CTAs' },
-    { value: 'gemini-3', label: 'Gemini 3', detail: 'Google', bestFor: 'Vision-heavy, structured' },
-    { value: 'claude-4.5', label: 'Claude 4.5', detail: 'Anthropic', bestFor: 'Long scripts, reasoning' },
+    { value: 'gpt-5.1', label: 'GPT 5.1', detail: 'OpenAI' },
+    { value: 'nano-banana', label: 'Nano Banana', detail: 'Internal' },
   ];
 
-  const dynamicOptions: ModelOption[] = profiles.map((profile) => ({
-    value: profile.slug,
-    label: profile.slug,
-    detail: `${profile.provider} • ${profile.model}`,
-  }));
-
-  const options = [...builtIns, ...extraOptions, ...dynamicOptions];
+  const options = [...builtIns, ...extraOptions];
   const selectedLabel = options.find((option) => option.value === value)?.label || value || 'Model';
 
   return (

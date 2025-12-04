@@ -76,9 +76,8 @@ export function ChatInterface({ campaignId, initialHistory, onStrategyGenerated 
                             <SelectValue placeholder="Model" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="gpt-5.1">GPT 5.1 (OpenAI)</SelectItem>
-                            <SelectItem value="gemini-3">Gemini 3 (Google)</SelectItem>
-                            <SelectItem value="claude-4.5">Claude 4.5 (Anthropic)</SelectItem>
+                            <SelectItem value="gpt-5.1">GPT 5.1</SelectItem>
+                            <SelectItem value="nano-banana">Nano Banana</SelectItem>
                         </SelectContent>
                     </Select>
 
