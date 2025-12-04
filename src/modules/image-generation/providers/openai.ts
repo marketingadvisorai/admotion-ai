@@ -9,6 +9,7 @@ type DalleSize = '1024x1024' | '1792x1024' | '1024x1792';
 
 const ASPECT_TO_SIZE: Record<ImageAspectRatio, DalleSize> = {
     '1:1': '1024x1024',
+    '4:5': '1024x1792',  // Portrait, close to 4:5
     '3:2': '1792x1024',
     '2:3': '1024x1792',
     '16:9': '1792x1024',

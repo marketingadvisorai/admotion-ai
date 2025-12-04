@@ -32,6 +32,7 @@ export async function generateWithGemini(
     // Gemini uses different aspect ratio format
     const aspectRatioMap: Record<ImageAspectRatio, string> = {
         '1:1': '1:1',
+        '4:5': '4:5',
         '3:2': '3:2',
         '2:3': '2:3',
         '16:9': '16:9',

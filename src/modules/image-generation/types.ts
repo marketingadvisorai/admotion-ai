@@ -4,7 +4,7 @@
 
 export type ImageProvider = 'openai' | 'gemini';
 
-export type ImageAspectRatio = '1:1' | '3:2' | '2:3' | '16:9' | '9:16';
+export type ImageAspectRatio = '1:1' | '4:5' | '3:2' | '2:3' | '16:9' | '9:16';
 
 export type ImageStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
