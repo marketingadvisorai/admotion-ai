@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowUpRight, AudioLines, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowUpRight, AudioLines, Loader2, AlertCircle, Grid3X3, Sparkles } from 'lucide-react';
 import { BrandPicker, BrandMode, AnalyzedBrandProfile } from '@/components/ads/brand-picker';
 import { ModelDropdown } from '@/components/ads/model-dropdown';
 import { QuickPrompts } from '@/components/ads/quick-prompts';
@@ -11,6 +11,14 @@ import { GeneratedGrid, GeneratedImage } from './generated-grid';
 import { BrandKit } from '@/modules/brand-kits/types';
 import { LlmProfile } from '@/modules/llm/types';
 import { ImageGeneration, ImageProvider, ImageAspectRatio } from '@/modules/image-generation/types';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
 
 type AspectRatio = '3:2' | '1:1' | '2:3';
 
@@ -88,6 +96,8 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
   const [error, setError] = useState<string | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<ImageProvider>('openai');
   const [isLoadingImages, setIsLoadingImages] = useState(true);
+  const [isGeneratingPack, setIsGeneratingPack] = useState(false);
+  const [packProgress, setPackProgress] = useState({ current: 0, total: 9 });
 
   // Load existing images on mount
   const loadExistingImages = useCallback(async () => {
@@ -241,6 +251,72 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
     setSelectedAspect(example.aspect);
   };
 
+  // Generate Creative Pack (9 images: 3 directions × 3 ratios)
+  const handleGeneratePack = async () => {
+    const basePrompt = buildPrompt();
+    if (!basePrompt.trim()) return;
+    
+    setError(null);
+    setIsGeneratingPack(true);
+    setPackProgress({ current: 0, total: 9 });
+
+    const directions = [
+      { name: 'Bold & Modern', style: 'bold geometric shapes, high contrast, modern typography' },
+      { name: 'Soft & Elegant', style: 'soft gradients, elegant curves, refined aesthetics' },
+      { name: 'Fresh & Authentic', style: 'natural lighting, authentic feel, lifestyle photography' },
+    ];
+    const ratios: ImageAspectRatio[] = ['1:1', '4:5', '9:16'];
+    const allImages: GeneratedImage[] = [];
+
+    try {
+      let completed = 0;
+      for (const direction of directions) {
+        for (const ratio of ratios) {
+          const enhancedPrompt = `${basePrompt} Style: ${direction.style}`;
+          
+          const res = await fetch('/api/images/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orgId,
+              prompt: enhancedPrompt,
+              provider: selectedProvider,
+              aspectRatio: ratio,
+              numberOfImages: 1,
+              brandContext: activeBrand ? {
+                businessName: activeBrand.business_name,
+                colors: activeBrand.colors?.map((c) => c.value).filter(Boolean),
+                brandVoice: activeBrand.strategy?.brand_voice,
+              } : undefined,
+            }),
+          });
+
+          const data = await res.json();
+          if (data.success && data.images) {
+            const newImages: GeneratedImage[] = data.images.map((img: ImageGeneration) => ({
+              id: img.id,
+              url: img.result_url || '',
+              prompt: img.prompt_used || enhancedPrompt,
+              style: `${direction.name} - ${ratio}`,
+              createdAt: new Date(img.created_at),
+            }));
+            allImages.push(...newImages);
+          }
+          
+          completed++;
+          setPackProgress({ current: completed, total: 9 });
+        }
+      }
+
+      setGeneratedImages((prev) => [...allImages, ...prev]);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to generate pack';
+      setError(message);
+    } finally {
+      setIsGeneratingPack(false);
+    }
+  };
+
   const quickPromptCards = promptExamples.map((item) => ({
     id: item.id,
     title: item.title,
@@ -352,11 +428,55 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {/* Generate Pack Dropdown */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="h-11 rounded-[16px] border-white/80 bg-white/90 shadow-sm text-slate-700 gap-2 px-3"
+                          disabled={!prompt.trim() || isGenerating || isGeneratingPack}
+                        >
+                          {isGeneratingPack ? (
+                            <>
+                              <Loader2 className="size-4 animate-spin" />
+                              <span className="text-xs">{packProgress.current}/{packProgress.total}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Grid3X3 className="size-4" />
+                              <span className="text-xs hidden sm:inline">Pack</span>
+                            </>
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuLabel className="flex items-center gap-2">
+                          <Sparkles className="size-4 text-purple-500" />
+                          Creative Pack
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleGeneratePack} disabled={isGeneratingPack}>
+                          <Grid3X3 className="size-4 mr-2" />
+                          Generate 9 Images
+                          <span className="ml-auto text-xs text-slate-400">3×3</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <div className="px-2 py-1.5 text-xs text-slate-500">
+                          Creates 3 directions × 3 ratios:
+                          <div className="mt-1 space-y-0.5">
+                            <div>• Bold & Modern</div>
+                            <div>• Soft & Elegant</div>
+                            <div>• Fresh & Authentic</div>
+                          </div>
+                        </div>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
                     <Button
                       size="icon"
                       className="h-12 w-12 rounded-[18px] bg-[#3178ff] text-white shadow-lg shadow-blue-500/20 hover:bg-[#2a6ae0]"
                       onClick={handleGenerate}
-                      disabled={!prompt.trim() || isGenerating}
+                      disabled={!prompt.trim() || isGenerating || isGeneratingPack}
                       aria-label="Generate ad"
                     >
                       {isGenerating ? <Loader2 className="size-5 animate-spin" /> : <ArrowUpRight className="size-5" />}
@@ -409,11 +529,23 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-slate-900">Recent generations</h3>
-              <p className="text-sm text-slate-500">Draft results appear here after you generate.</p>
+              <p className="text-sm text-slate-500">
+                {isGeneratingPack 
+                  ? `Generating pack... ${packProgress.current}/${packProgress.total} images` 
+                  : 'Draft results appear here after you generate.'}
+              </p>
             </div>
             <span className="text-sm text-slate-500">{generatedImages.length} created</span>
           </div>
-          <GeneratedGrid images={generatedImages} isLoading={isGenerating || isLoadingImages} />
+          {isGeneratingPack && (
+            <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+              <div 
+                className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${(packProgress.current / packProgress.total) * 100}%` }}
+              />
+            </div>
+          )}
+          <GeneratedGrid images={generatedImages} isLoading={isGenerating || isLoadingImages || isGeneratingPack} />
         </section>
       </div>
     </div>
