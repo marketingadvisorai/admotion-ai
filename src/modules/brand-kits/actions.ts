@@ -43,7 +43,7 @@ export async function createBrandKitFromUrlAction(url: string, orgId: string) {
         const identity = analysisResult.data as BrandIdentity;
         const supabase = await createClient();
 
-        const logo_url = await uploadLogoToStorage(identity.logo_url, orgId);
+        const logo_url = await uploadLogoToStorage(identity.logo_url || '', orgId);
         const fallbackName = identity.business_name || (() => {
             try {
                 return new URL(url).hostname;

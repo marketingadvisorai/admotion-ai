@@ -62,66 +62,98 @@ export function BrandPicker({
           type="button"
           variant="ghost"
           size="icon"
-          className="rounded-full border border-white/80 bg-white/90 text-slate-600 shadow-sm"
+          className="rounded-full border border-white/80 bg-white/90 text-slate-600 shadow-sm hover:bg-white hover:text-slate-900"
         >
           <Plus className="size-4" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-3" align="start">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">Brand Kit</p>
-        <div className="space-y-2">
-          {brandKits.map((kit) => (
-            <button
-              key={kit.id}
-              onClick={() => onSelectKit(kit.id)}
-              className={cn(
-                'w-full flex items-center gap-2 rounded-xl border px-2 py-2 text-left text-sm transition',
-                selectedBrandKitId === kit.id ? 'border-blue-200 bg-blue-50' : 'border-slate-200 hover:bg-slate-50'
-              )}
-            >
-              {kit.logo_url ? (
-                <Image src={kit.logo_url} alt={kit.name} width={28} height={28} className="rounded-md object-cover" />
-              ) : (
-                <div className="size-7 rounded-md bg-slate-200" />
-              )}
-              <div className="min-w-0">
-                <p className="font-semibold text-slate-900 line-clamp-1">{kit.name}</p>
-                <p className="text-xs text-slate-500 line-clamp-1">{kit.business_name || 'No business name'}</p>
-              </div>
-              {selectedBrandKitId === kit.id && <Check className="ml-auto size-4 text-blue-600" />}
-            </button>
-          ))}
+      <PopoverContent className="w-80 p-0 overflow-hidden rounded-2xl shadow-xl border-slate-200" align="start">
+        <div className="max-h-[80vh] overflow-y-auto p-3 space-y-4">
 
-          {analyzedBrands.length > 0 && (
-            <div className="pt-2 border-t border-slate-200 space-y-2">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Analyzed brands</p>
-              {analyzedBrands.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => onSelectAnalyzer(item.id)}
-                  className={cn(
-                    'w-full flex items-center gap-2 rounded-xl border px-2 py-2 text-left text-sm transition',
-                    selectedAnalyzerId === item.id ? 'border-blue-200 bg-blue-50' : 'border-slate-200 hover:bg-slate-50'
-                  )}
-                >
-                  <div className="size-7 rounded-md bg-slate-200 overflow-hidden">
-                    {item.analysis.logo_url && (
-                      <Image src={item.analysis.logo_url} alt={item.name} width={28} height={28} className="object-cover" />
+          {/* Brand Kits Section */}
+          <div className="space-y-2">
+            <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-400 px-1">Brand Kit</p>
+            <div className="space-y-1">
+              {brandKits.length === 0 ? (
+                <div className="px-3 py-4 text-center rounded-xl border border-dashed border-slate-200 bg-slate-50">
+                  <p className="text-xs text-slate-500">No brand kits found</p>
+                </div>
+              ) : (
+                brandKits.map((kit) => (
+                  <button
+                    key={kit.id}
+                    onClick={() => onSelectKit(kit.id)}
+                    className={cn(
+                      'w-full flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-all duration-200',
+                      selectedBrandKitId === kit.id
+                        ? 'border-purple-200 bg-purple-50/60 shadow-sm ring-1 ring-purple-100'
+                        : 'border-transparent hover:bg-slate-50 hover:border-slate-200'
                     )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-slate-900 line-clamp-1">{item.name}</p>
-                    <p className="text-xs text-slate-500 line-clamp-1">{item.url}</p>
-                  </div>
-                  {selectedAnalyzerId === item.id && <Check className="ml-auto size-4 text-blue-600" />}
-                </button>
-              ))}
+                  >
+                    {kit.logo_url ? (
+                      <div className="relative size-9 rounded-lg overflow-hidden border border-slate-100 bg-white shadow-sm shrink-0">
+                        <Image src={kit.logo_url} alt={kit.name} fill className="object-cover" />
+                      </div>
+                    ) : (
+                      <div className="size-9 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center shrink-0 border border-slate-200">
+                        <span className="text-xs font-bold text-slate-500">{kit.name.charAt(0)}</span>
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className={cn("font-semibold line-clamp-1", selectedBrandKitId === kit.id ? "text-purple-900" : "text-slate-900")}>
+                        {kit.name}
+                      </p>
+                      <p className="text-xs text-slate-500 line-clamp-1">{kit.business_name || 'No business name'}</p>
+                    </div>
+                    {selectedBrandKitId === kit.id && <Check className="size-4 text-purple-600 shrink-0" />}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Analyzed Brands Section */}
+          {analyzedBrands.length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-400 px-1">Analyzed brands</p>
+              <div className="space-y-1">
+                {analyzedBrands.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => onSelectAnalyzer(item.id)}
+                    className={cn(
+                      'w-full flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-all duration-200',
+                      selectedAnalyzerId === item.id
+                        ? 'border-blue-200 bg-blue-50/60 shadow-sm ring-1 ring-blue-100'
+                        : 'border-transparent hover:bg-slate-50 hover:border-slate-200'
+                    )}
+                  >
+                    <div className="size-9 rounded-lg bg-slate-100 overflow-hidden border border-slate-200 shrink-0">
+                      {item.analysis.logo_url ? (
+                        <Image src={item.analysis.logo_url} alt={item.name} width={36} height={36} className="object-cover h-full w-full" />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center bg-slate-50">
+                          <span className="text-xs text-slate-400">URL</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className={cn("font-semibold line-clamp-1", selectedAnalyzerId === item.id ? "text-blue-900" : "text-slate-900")}>
+                        {item.name}
+                      </p>
+                      <p className="text-xs text-slate-500 line-clamp-1">{item.url}</p>
+                    </div>
+                    {selectedAnalyzerId === item.id && <Check className="size-4 text-blue-600 shrink-0" />}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
-          <div className="pt-2 border-t border-slate-200 space-y-2">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Reference image</p>
-            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">
+          {/* Reference Image Section */}
+          <div className="space-y-2 pt-2 border-t border-slate-100">
+            <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-400 px-1">Reference image</p>
+            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50/50 px-3 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-400 transition-colors">
               <input
                 type="file"
                 accept="image/*"
@@ -134,49 +166,67 @@ export function BrandPicker({
                   e.target.value = '';
                 }}
               />
+              <Plus className="size-4" />
               Upload image
             </label>
           </div>
 
-          <div className="pt-2 border-t border-slate-200 space-y-2">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Analyze URL</p>
+          {/* Analyze URL Section */}
+          <div className="space-y-2 pt-2 border-t border-slate-100">
+            <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-400 px-1">Analyze URL</p>
             <div className="flex gap-2">
               <Input
                 placeholder="https://brand.com"
                 value={brandUrl}
                 onChange={(e) => onUrlChange(e.target.value)}
-                className="rounded-lg bg-white border-slate-200 text-slate-800"
+                className="rounded-xl bg-white border-slate-200 text-slate-800 h-10"
               />
               <Button
                 onClick={() => onAnalyze(brandUrl)}
-                className="rounded-lg bg-slate-900 text-white"
+                className="rounded-xl bg-slate-900 text-white h-10 px-4 hover:bg-slate-800"
                 disabled={isAnalyzing || !brandUrl.trim()}
-                size="sm"
               >
                 {isAnalyzing ? <Loader2 className="size-4 animate-spin" /> : 'Go'}
               </Button>
             </div>
-            {analysis && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700 space-y-1">
-                <p className="font-semibold text-slate-900">{analysis.business_name}</p>
-                <p className="line-clamp-2">{analysis.description}</p>
-                <div className="flex flex-wrap gap-1">
-                  {analysis.colors?.slice(0, 3).map((c) => (
-                    <span key={c.name + c.value} className="inline-flex items-center gap-1 rounded-full border border-white/60 bg-white/70 px-2 py-[2px] text-[10px] font-semibold text-slate-700">
-                      <span className="size-3 rounded-full border" style={{ background: c.value }} />
-                      {c.value}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
+          {/* Active Context Preview */}
+          {analysis && (
+            <div className="pt-2 border-t border-slate-100">
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="size-2 rounded-full bg-indigo-500 animate-pulse" />
+                  <p className="text-xs font-semibold text-indigo-900">Active Context</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-slate-900">{analysis.business_name}</p>
+                  <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">{analysis.description}</p>
+                </div>
+                {analysis.colors && analysis.colors.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {analysis.colors.slice(0, 5).map((c, i) => (
+                      <div
+                        key={i}
+                        className="size-4 rounded-full border border-white/20 shadow-sm ring-1 ring-black/5"
+                        style={{ background: c.value }}
+                        title={c.name}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer Actions */}
+        <div className="p-2 border-t border-slate-100 bg-slate-50/50">
           <button
             onClick={onClear}
-            className="w-full rounded-xl border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            className="w-full rounded-lg border border-transparent px-2 py-2 text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
           >
-            No brand
+            Clear selection
           </button>
         </div>
       </PopoverContent>

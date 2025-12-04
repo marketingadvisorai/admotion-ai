@@ -33,9 +33,16 @@ export async function createBrandKit(input: CreateBrandKitInput) {
         .insert({
             org_id: input.org_id,
             name: input.name,
+            website_url: input.website_url,
+            business_name: input.business_name,
+            description: input.description,
+            locations: input.locations,
             logo_url: input.logo_url,
             colors: input.colors,
             fonts: input.fonts,
+            social_links: input.social_links,
+            offerings: input.offerings,
+            strategy: input.strategy,
         })
         .select()
         .single();
@@ -50,9 +57,16 @@ export async function updateBrandKit(input: UpdateBrandKitInput) {
         .from('brand_kits')
         .update({
             name: input.name,
+            website_url: input.website_url,
+            business_name: input.business_name,
+            description: input.description,
+            locations: input.locations,
             logo_url: input.logo_url,
             colors: input.colors,
             fonts: input.fonts,
+            social_links: input.social_links,
+            offerings: input.offerings,
+            strategy: input.strategy,
         })
         .eq('id', input.id)
         .select()
