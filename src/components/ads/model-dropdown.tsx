@@ -1,13 +1,14 @@
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { LlmProfile } from '@/modules/llm/types';
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, MessageSquare, Image } from 'lucide-react';
 
 interface ModelOption {
   value: string;
   label: string;
   detail?: string;
   bestFor?: string;
+  category?: 'chat' | 'image';
 }
 
 interface ModelDropdownProps {
@@ -18,13 +19,24 @@ interface ModelDropdownProps {
 }
 
 export function ModelDropdown({ profiles, value, onChange, extraOptions = [] }: ModelDropdownProps) {
-  const builtIns: ModelOption[] = [
-    { value: 'gpt-5.1', label: 'GPT 5.1', detail: 'OpenAI' },
-    { value: 'nano-banana', label: 'Nano Banana', detail: 'Internal' },
+  // Chat models
+  const chatModels: ModelOption[] = [
+    { value: 'gpt-4o', label: 'GPT-4o', detail: 'OpenAI', bestFor: 'Best for ideas', category: 'chat' },
+    { value: 'gpt-4o-mini', label: 'GPT-4o Mini', detail: 'OpenAI', bestFor: 'Fast & efficient', category: 'chat' },
+    { value: 'claude-3.5', label: 'Claude 3.5', detail: 'Anthropic', bestFor: 'Creative writing', category: 'chat' },
+    { value: 'gemini-pro', label: 'Gemini Pro', detail: 'Google', bestFor: 'Multimodal', category: 'chat' },
   ];
 
-  const options = [...builtIns, ...extraOptions];
-  const selectedLabel = options.find((option) => option.value === value)?.label || value || 'Model';
+  // Image generation models
+  const imageModels: ModelOption[] = [
+    { value: 'dall-e-3', label: 'DALL-E 3', detail: 'OpenAI', bestFor: 'High quality', category: 'image' },
+    { value: 'imagen-3', label: 'Imagen 3', detail: 'Google', bestFor: 'Photorealistic', category: 'image' },
+    { value: 'gemini-imagen', label: 'Gemini Imagen', detail: 'Google', bestFor: 'Fast generation', category: 'image' },
+  ];
+
+  const allOptions = [...chatModels, ...imageModels, ...extraOptions];
+  const selectedOption = allOptions.find((option) => option.value === value);
+  const selectedLabel = selectedOption?.label || value || 'Model';
 
   return (
     <DropdownMenu>
@@ -39,18 +51,35 @@ export function ModelDropdown({ profiles, value, onChange, extraOptions = [] }: 
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-64">
-        <DropdownMenuLabel>Model</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {options.map((option) => (
+        <DropdownMenuLabel className="flex items-center gap-2">
+          <MessageSquare className="size-4" />
+          Chat Models
+        </DropdownMenuLabel>
+        {chatModels.map((option) => (
           <DropdownMenuItem key={option.value} onClick={() => onChange(option.value)}>
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-slate-900">{option.label}</span>
-              {option.detail && (
-                <span className="text-xs text-slate-500">
-                  {option.detail}
-                  {option.bestFor ? ` • ${option.bestFor}` : ''}
-                </span>
-              )}
+              <span className="text-xs text-slate-500">
+                {option.detail}{option.bestFor ? ` • ${option.bestFor}` : ''}
+              </span>
+            </div>
+            {value === option.value && <Check className="ml-auto size-4 text-blue-600" />}
+          </DropdownMenuItem>
+        ))}
+        
+        <DropdownMenuSeparator />
+        
+        <DropdownMenuLabel className="flex items-center gap-2">
+          <Image className="size-4" />
+          Image Models
+        </DropdownMenuLabel>
+        {imageModels.map((option) => (
+          <DropdownMenuItem key={option.value} onClick={() => onChange(option.value)}>
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-slate-900">{option.label}</span>
+              <span className="text-xs text-slate-500">
+                {option.detail}{option.bestFor ? ` • ${option.bestFor}` : ''}
+              </span>
             </div>
             {value === option.value && <Check className="ml-auto size-4 text-blue-600" />}
           </DropdownMenuItem>

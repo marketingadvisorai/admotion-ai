@@ -3,24 +3,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowUpRight, AudioLines, Loader2, AlertCircle, Grid3X3, Sparkles } from 'lucide-react';
+import { ArrowUpRight, AudioLines, Loader2, AlertCircle, MessageSquare, Wand2 } from 'lucide-react';
 import { BrandPicker, BrandMode, AnalyzedBrandProfile } from '@/components/ads/brand-picker';
 import { ModelDropdown } from '@/components/ads/model-dropdown';
-import { QuickPrompts } from '@/components/ads/quick-prompts';
 import { GeneratedGrid, GeneratedImage } from './generated-grid';
 import { BrandKit } from '@/modules/brand-kits/types';
 import { LlmProfile } from '@/modules/llm/types';
-import { ImageGeneration, ImageProvider, ImageAspectRatio } from '@/modules/image-generation/types';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-} from '@/components/ui/dropdown-menu';
+import { ImageGeneration, ImageAspectRatio } from '@/modules/image-generation/types';
 
 type AspectRatio = '3:2' | '1:1' | '2:3';
+type CreativeMode = 'chat' | 'make';
 
 interface BrandIdentityLite {
   business_name?: string;
@@ -37,43 +29,12 @@ interface ImageGeneratorProps {
   orgId: string;
 }
 
-const promptExamples = [
-  {
-    id: 'sneaker',
-    title: 'Timeless Classics',
-    prompt: 'Create a vibrant sneaker ad featuring a confident model and a modern gradient backdrop highlighting comfort and movement.',
-    image: 'https://images.unsplash.com/photo-1542293787938-4d273c1130f6?auto=format&fit=crop&w=600&q=80',
-    aspect: '1:1' as AspectRatio,
-  },
-  {
-    id: 'food',
-    title: 'Weekend Deals',
-    prompt: 'Design a cozy food delivery ad with warm lighting, rustic props, and a hero bowl of ramen beside fresh ingredients.',
-    image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=600&q=80',
-    aspect: '3:2' as AspectRatio,
-  },
-  {
-    id: 'grocery',
-    title: 'Fresh Greens',
-    prompt: 'Craft a grocery delivery ad with crisp veggies, soft gradients, and overlayed pricing badges that feel approachable.',
-    image: 'https://images.unsplash.com/photo-1502741338009-cac2772e18bc?auto=format&fit=crop&w=600&q=80',
-    aspect: '2:3' as AspectRatio,
-  },
-  {
-    id: 'hotel',
-    title: 'Escape Campaign',
-    prompt: 'Generate a luxury travel ad featuring a serene resort pool at golden hour, with refined typography and subtle glow.',
-    image: 'https://images.unsplash.com/photo-1505761671935-60b3a7427bad?auto=format&fit=crop&w=600&q=80',
-    aspect: '3:2' as AspectRatio,
-  },
-  {
-    id: 'poster',
-    title: 'Playful Poster',
-    prompt: 'Design a playful poster with pastel gradients, rounded shapes, and a friendly mascot waving beside the CTA.',
-    image: 'https://images.unsplash.com/photo-1523475472560-d2df97ec485c?auto=format&fit=crop&w=600&q=80',
-    aspect: '1:1' as AspectRatio,
-  },
-];
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+}
 
 export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: ImageGeneratorProps) {
   const [brandKitOptions, setBrandKitOptions] = useState<BrandKit[]>(brandKits);
@@ -94,10 +55,10 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [selectedProvider, setSelectedProvider] = useState<ImageProvider>('openai');
   const [isLoadingImages, setIsLoadingImages] = useState(true);
-  const [isGeneratingPack, setIsGeneratingPack] = useState(false);
-  const [packProgress, setPackProgress] = useState({ current: 0, total: 9 });
+  const [creativeMode, setCreativeMode] = useState<CreativeMode>('make');
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [isChatting, setIsChatting] = useState(false);
 
   // Load existing images on mount
   const loadExistingImages = useCallback(async () => {
@@ -183,6 +144,55 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
     }
   };
 
+  // Get the selected image model from the model dropdown
+  const getImageProvider = () => {
+    if (selectedLlmProfile.includes('dall-e')) return 'openai';
+    if (selectedLlmProfile.includes('imagen') || selectedLlmProfile.includes('gemini-imagen')) return 'gemini';
+    return 'openai'; // default
+  };
+
+  // Handle Chat mode - get AI ideas without generating images
+  const handleChat = async () => {
+    if (!prompt.trim() || creativeMode !== 'chat') return;
+    
+    setIsChatting(true);
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: prompt,
+      timestamp: new Date(),
+    };
+    setChatMessages((prev) => [...prev, userMessage]);
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [...chatMessages, userMessage].map((m) => ({ role: m.role, content: m.content })),
+          systemPrompt: `You are a creative advertising expert. Help the user brainstorm ad concepts, headlines, taglines, and visual ideas. Be specific and actionable. When you have a solid concept, suggest they switch to "Make" mode to generate the images.`,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.content) {
+        const assistantMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: data.content,
+          timestamp: new Date(),
+        };
+        setChatMessages((prev) => [...prev, assistantMessage]);
+      }
+    } catch (err) {
+      console.error('Chat failed:', err);
+    } finally {
+      setIsChatting(false);
+      setPrompt('');
+    }
+  };
+
+  // Handle Make mode - generate images
   const handleGenerate = async () => {
     const nextPrompt = buildPrompt();
     if (!nextPrompt.trim()) return;
@@ -191,7 +201,6 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
     setIsGenerating(true);
     
     try {
-      // Build brand context from active brand
       const brandContext = activeBrand ? {
         businessName: activeBrand.business_name,
         colors: activeBrand.colors?.map((c) => c.value).filter(Boolean),
@@ -199,7 +208,6 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
         targetAudience: activeBrand.strategy?.target_audience,
       } : undefined;
 
-      // Map aspect ratio format
       const aspectRatioMap: Record<AspectRatio, ImageAspectRatio> = {
         '1:1': '1:1',
         '3:2': '3:2',
@@ -212,7 +220,7 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
         body: JSON.stringify({
           orgId,
           prompt: nextPrompt,
-          provider: selectedProvider,
+          provider: getImageProvider(),
           aspectRatio: aspectRatioMap[selectedAspect],
           numberOfImages: 1,
           brandContext,
@@ -225,7 +233,6 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
         throw new Error(data.error || 'Failed to generate image');
       }
 
-      // Map the response to GeneratedImage format
       const newImages: GeneratedImage[] = data.images.map((img: ImageGeneration) => ({
         id: img.id,
         url: img.result_url || '',
@@ -244,86 +251,14 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
     }
   };
 
-  const handleUseExample = (id: string) => {
-    const example = promptExamples.find((item) => item.id === id);
-    if (!example) return;
-    setPrompt(example.prompt);
-    setSelectedAspect(example.aspect);
-  };
-
-  // Generate Creative Pack (9 images: 3 directions × 3 ratios)
-  const handleGeneratePack = async () => {
-    const basePrompt = buildPrompt();
-    if (!basePrompt.trim()) return;
-    
-    setError(null);
-    setIsGeneratingPack(true);
-    setPackProgress({ current: 0, total: 9 });
-
-    const directions = [
-      { name: 'Bold & Modern', style: 'bold geometric shapes, high contrast, modern typography' },
-      { name: 'Soft & Elegant', style: 'soft gradients, elegant curves, refined aesthetics' },
-      { name: 'Fresh & Authentic', style: 'natural lighting, authentic feel, lifestyle photography' },
-    ];
-    const ratios: ImageAspectRatio[] = ['1:1', '4:5', '9:16'];
-    const allImages: GeneratedImage[] = [];
-
-    try {
-      let completed = 0;
-      for (const direction of directions) {
-        for (const ratio of ratios) {
-          const enhancedPrompt = `${basePrompt} Style: ${direction.style}`;
-          
-          const res = await fetch('/api/images/generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              orgId,
-              prompt: enhancedPrompt,
-              provider: selectedProvider,
-              aspectRatio: ratio,
-              numberOfImages: 1,
-              brandContext: activeBrand ? {
-                businessName: activeBrand.business_name,
-                colors: activeBrand.colors?.map((c) => c.value).filter(Boolean),
-                brandVoice: activeBrand.strategy?.brand_voice,
-              } : undefined,
-            }),
-          });
-
-          const data = await res.json();
-          if (data.success && data.images) {
-            const newImages: GeneratedImage[] = data.images.map((img: ImageGeneration) => ({
-              id: img.id,
-              url: img.result_url || '',
-              prompt: img.prompt_used || enhancedPrompt,
-              style: `${direction.name} - ${ratio}`,
-              createdAt: new Date(img.created_at),
-            }));
-            allImages.push(...newImages);
-          }
-          
-          completed++;
-          setPackProgress({ current: completed, total: 9 });
-        }
-      }
-
-      setGeneratedImages((prev) => [...allImages, ...prev]);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to generate pack';
-      setError(message);
-    } finally {
-      setIsGeneratingPack(false);
+  // Handle submit based on mode
+  const handleSubmit = () => {
+    if (creativeMode === 'chat') {
+      handleChat();
+    } else {
+      handleGenerate();
     }
   };
-
-  const quickPromptCards = promptExamples.map((item) => ({
-    id: item.id,
-    title: item.title,
-    prompt: item.prompt,
-    image: item.image,
-    meta: '',
-  }));
 
   return (
     <div className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(128,115,255,0.08),transparent_35%),radial-gradient(circle_at_80%_10%,rgba(82,196,255,0.12),transparent_32%),#f5f6fb] min-h-screen rounded-[32px]">
@@ -402,84 +337,42 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
 
                     <ModelDropdown profiles={llmProfiles} value={selectedLlmProfile} onChange={setSelectedLlmProfile} />
 
-                    {/* Provider Selector */}
+                    {/* Chat / Make Mode Toggle */}
                     <div className="flex items-center gap-1 rounded-full bg-white/80 border border-white/60 p-1">
                       <button
-                        onClick={() => setSelectedProvider('openai')}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-                          selectedProvider === 'openai'
+                        onClick={() => setCreativeMode('chat')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                          creativeMode === 'chat'
                             ? 'bg-slate-900 text-white'
                             : 'text-slate-600 hover:bg-slate-100'
                         }`}
                       >
-                        DALL-E 3
+                        <MessageSquare className="size-3.5" />
+                        Chat
                       </button>
                       <button
-                        onClick={() => setSelectedProvider('gemini')}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-                          selectedProvider === 'gemini'
+                        onClick={() => setCreativeMode('make')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                          creativeMode === 'make'
                             ? 'bg-slate-900 text-white'
                             : 'text-slate-600 hover:bg-slate-100'
                         }`}
                       >
-                        Gemini
+                        <Wand2 className="size-3.5" />
+                        Make
                       </button>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {/* Generate Pack Dropdown */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="h-11 rounded-[16px] border-white/80 bg-white/90 shadow-sm text-slate-700 gap-2 px-3"
-                          disabled={!prompt.trim() || isGenerating || isGeneratingPack}
-                        >
-                          {isGeneratingPack ? (
-                            <>
-                              <Loader2 className="size-4 animate-spin" />
-                              <span className="text-xs">{packProgress.current}/{packProgress.total}</span>
-                            </>
-                          ) : (
-                            <>
-                              <Grid3X3 className="size-4" />
-                              <span className="text-xs hidden sm:inline">Pack</span>
-                            </>
-                          )}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56">
-                        <DropdownMenuLabel className="flex items-center gap-2">
-                          <Sparkles className="size-4 text-purple-500" />
-                          Creative Pack
-                        </DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={handleGeneratePack} disabled={isGeneratingPack}>
-                          <Grid3X3 className="size-4 mr-2" />
-                          Generate 9 Images
-                          <span className="ml-auto text-xs text-slate-400">3×3</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <div className="px-2 py-1.5 text-xs text-slate-500">
-                          Creates 3 directions × 3 ratios:
-                          <div className="mt-1 space-y-0.5">
-                            <div>• Bold & Modern</div>
-                            <div>• Soft & Elegant</div>
-                            <div>• Fresh & Authentic</div>
-                          </div>
-                        </div>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
                     <Button
                       size="icon"
                       className="h-12 w-12 rounded-[18px] bg-[#3178ff] text-white shadow-lg shadow-blue-500/20 hover:bg-[#2a6ae0]"
-                      onClick={handleGenerate}
-                      disabled={!prompt.trim() || isGenerating || isGeneratingPack}
-                      aria-label="Generate ad"
+                      onClick={handleSubmit}
+                      disabled={!prompt.trim() || isGenerating || isChatting}
+                      aria-label={creativeMode === 'chat' ? 'Send message' : 'Generate ad'}
                     >
-                      {isGenerating ? <Loader2 className="size-5 animate-spin" /> : <ArrowUpRight className="size-5" />}
+                      {(isGenerating || isChatting) ? <Loader2 className="size-5 animate-spin" /> : <ArrowUpRight className="size-5" />}
                     </Button>
                     <Button
                       size="icon"
@@ -501,12 +394,31 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
           </div>
         </div>
 
-        <section className="space-y-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500 text-center md:text-left">
-            Create a starting prompt with the examples below
-          </p>
-          <QuickPrompts items={quickPromptCards} onSelect={handleUseExample} />
-        </section>
+        {/* Chat Messages (shown in Chat mode) */}
+        {creativeMode === 'chat' && chatMessages.length > 0 && (
+          <section className="space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500 text-center md:text-left">
+              Chat History
+            </p>
+            <div className="space-y-3 max-h-[400px] overflow-y-auto">
+              {chatMessages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`p-4 rounded-2xl ${
+                    msg.role === 'user'
+                      ? 'bg-blue-50 border border-blue-100 ml-8'
+                      : 'bg-white border border-slate-200 mr-8'
+                  }`}
+                >
+                  <p className="text-xs font-medium text-slate-500 mb-1">
+                    {msg.role === 'user' ? 'You' : 'AI Assistant'}
+                  </p>
+                  <p className="text-sm text-slate-700 whitespace-pre-wrap">{msg.content}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Error Display */}
         {error && (
@@ -525,27 +437,20 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
           </div>
         )}
 
+        {/* Generated Images (shown in Make mode or always) */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-slate-900">Recent generations</h3>
               <p className="text-sm text-slate-500">
-                {isGeneratingPack 
-                  ? `Generating pack... ${packProgress.current}/${packProgress.total} images` 
+                {isGenerating 
+                  ? 'Generating your ad...' 
                   : 'Draft results appear here after you generate.'}
               </p>
             </div>
             <span className="text-sm text-slate-500">{generatedImages.length} created</span>
           </div>
-          {isGeneratingPack && (
-            <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-              <div 
-                className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(packProgress.current / packProgress.total) * 100}%` }}
-              />
-            </div>
-          )}
-          <GeneratedGrid images={generatedImages} isLoading={isGenerating || isLoadingImages || isGeneratingPack} />
+          <GeneratedGrid images={generatedImages} isLoading={isGenerating || isLoadingImages} />
         </section>
       </div>
     </div>
