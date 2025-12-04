@@ -4,13 +4,10 @@ import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowUpRight, AudioLines, Loader2 } from 'lucide-react';
-import { AspectDropdown, AspectOption } from '@/components/ads/aspect-dropdown';
 import { BrandPicker, BrandMode, AnalyzedBrandProfile } from '@/components/ads/brand-picker';
 import { ModelDropdown } from '@/components/ads/model-dropdown';
-import { StyleDropdown } from '@/components/ads/style-dropdown';
 import { QuickPrompts } from '@/components/ads/quick-prompts';
 import { GeneratedGrid, GeneratedImage } from './generated-grid';
-import { ImageStyle } from './style-selector';
 import { BrandKit } from '@/modules/brand-kits/types';
 import { LlmProfile } from '@/modules/llm/types';
 
@@ -31,22 +28,6 @@ interface ImageGeneratorProps {
   orgId: string;
 }
 
-const aspectOptions: AspectOption<AspectRatio>[] = [
-  { value: '3:2', label: '3:2', hint: 'Landscape', visualWidth: 'w-9' },
-  { value: '1:1', label: '1:1', hint: 'Square', visualWidth: 'w-7' },
-  { value: '2:3', label: '2:3', hint: 'Portrait', visualWidth: 'w-6' },
-];
-
-const styleOptions: { id: ImageStyle; label: string; description: string }[] = [
-  { id: 'auto', label: 'Auto', description: 'Let the model pick the vibe' },
-  { id: 'clean_modern', label: 'Clean & Modern', description: 'Minimal shapes, crisp gradients' },
-  { id: 'bold', label: 'Bold', description: 'High contrast, loud colors' },
-  { id: 'minimalist', label: 'Minimalist', description: 'Soft neutrals, calm spacing' },
-  { id: 'luxury', label: 'Luxury', description: 'Deep tones with sheen' },
-  { id: 'playful', label: 'Playful', description: 'Rounded, colorful, energetic' },
-  { id: 'natural', label: 'Natural', description: 'Organic textures, greens' },
-];
-
 const promptExamples = [
   {
     id: 'sneaker',
@@ -54,7 +35,6 @@ const promptExamples = [
     prompt: 'Create a vibrant sneaker ad featuring a confident model and a modern gradient backdrop highlighting comfort and movement.',
     image: 'https://images.unsplash.com/photo-1542293787938-4d273c1130f6?auto=format&fit=crop&w=600&q=80',
     aspect: '1:1' as AspectRatio,
-    style: 'bold' as ImageStyle,
   },
   {
     id: 'food',
@@ -62,7 +42,6 @@ const promptExamples = [
     prompt: 'Design a cozy food delivery ad with warm lighting, rustic props, and a hero bowl of ramen beside fresh ingredients.',
     image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=600&q=80',
     aspect: '3:2' as AspectRatio,
-    style: 'clean_modern' as ImageStyle,
   },
   {
     id: 'grocery',
@@ -70,7 +49,6 @@ const promptExamples = [
     prompt: 'Craft a grocery delivery ad with crisp veggies, soft gradients, and overlayed pricing badges that feel approachable.',
     image: 'https://images.unsplash.com/photo-1502741338009-cac2772e18bc?auto=format&fit=crop&w=600&q=80',
     aspect: '2:3' as AspectRatio,
-    style: 'natural' as ImageStyle,
   },
   {
     id: 'hotel',
@@ -78,7 +56,6 @@ const promptExamples = [
     prompt: 'Generate a luxury travel ad featuring a serene resort pool at golden hour, with refined typography and subtle glow.',
     image: 'https://images.unsplash.com/photo-1505761671935-60b3a7427bad?auto=format&fit=crop&w=600&q=80',
     aspect: '3:2' as AspectRatio,
-    style: 'luxury' as ImageStyle,
   },
   {
     id: 'poster',
@@ -86,7 +63,6 @@ const promptExamples = [
     prompt: 'Design a playful poster with pastel gradients, rounded shapes, and a friendly mascot waving beside the CTA.',
     image: 'https://images.unsplash.com/photo-1523475472560-d2df97ec485c?auto=format&fit=crop&w=600&q=80',
     aspect: '1:1' as AspectRatio,
-    style: 'playful' as ImageStyle,
   },
 ];
 
@@ -97,7 +73,6 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
     'Generate a creative, eye-catching ad concept for a random product or service. Include a catchy headline, a short tagline, and a brief description that grabs attention.'
   );
   const [selectedAspect, setSelectedAspect] = useState<AspectRatio>('1:1');
-  const [selectedStyle, setSelectedStyle] = useState<ImageStyle>('clean_modern');
   const initialModel = llmProfiles.find((p) => ['gpt-5.1', 'nano-banana'].includes(p.slug))?.slug || 'gpt-5.1';
   const [selectedLlmProfile, setSelectedLlmProfile] = useState<string>(initialModel);
   const [selectedBrandKitId, setSelectedBrandKitId] = useState<string>(brandKitOptions[0]?.id || '');
@@ -128,7 +103,7 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
       activeBrand?.strategy?.target_audience ||
       activeBrand?.strategy?.values?.join(', ');
     const brandLine = activeBrand ? `Brand tone: ${voice || 'clean'}. Colors: ${colors || 'balanced'}.` : '';
-    return [`Aspect: ${selectedAspect}. Style: ${selectedStyle.replace('_', ' ')}.`, brandLine, prompt].filter(Boolean).join(' ');
+    return [`Aspect: ${selectedAspect}.`, brandLine, prompt].filter(Boolean).join(' ');
   };
 
   const handleAnalyzeBrand = async (url: string, model?: string) => {
@@ -180,7 +155,7 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
         id: `${Date.now()}-${i}`,
         url: fallback.image,
         prompt: nextPrompt,
-        style: selectedStyle,
+        style: undefined,
         createdAt: new Date(),
       };
     });
@@ -193,7 +168,6 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
     if (!example) return;
     setPrompt(example.prompt);
     setSelectedAspect(example.aspect);
-    setSelectedStyle(example.style);
   };
 
   const quickPromptCards = promptExamples.map((item) => ({
@@ -201,7 +175,7 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
     title: item.title,
     prompt: item.prompt,
     image: item.image,
-    meta: `${item.aspect} · ${item.style.replace('_', ' ')}`,
+    meta: '',
   }));
 
   return (
@@ -279,8 +253,6 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
                       }}
                     />
 
-                    <AspectDropdown value={selectedAspect} options={aspectOptions} onChange={setSelectedAspect} />
-                    <StyleDropdown value={selectedStyle} options={styleOptions} onChange={setSelectedStyle} />
                     <ModelDropdown profiles={llmProfiles} value={selectedLlmProfile} onChange={setSelectedLlmProfile} />
                   </div>
 

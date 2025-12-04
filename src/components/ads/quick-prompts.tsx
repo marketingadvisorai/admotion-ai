@@ -31,9 +31,11 @@ export function QuickPrompts({ items, onSelect }: QuickPromptsProps) {
               sizes="(min-width: 1024px) 200px, 33vw"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-slate-900/10 to-transparent" />
-            <span className="absolute bottom-2 left-2 rounded-full bg-white/90 px-2 py-1 text-[11px] font-semibold text-slate-900 shadow-sm">
-              {item.meta}
-            </span>
+            {item.meta && (
+              <span className="absolute bottom-2 left-2 rounded-full bg-white/90 px-2 py-1 text-[11px] font-semibold text-slate-900 shadow-sm">
+                {item.meta}
+              </span>
+            )}
           </div>
           <div className="px-3 py-3">
             <p className="text-sm font-semibold text-slate-900 line-clamp-2">{item.title}</p>

@@ -7,7 +7,7 @@ export interface GeneratedImage {
     id: string;
     url: string;
     prompt: string;
-    style: string;
+    style?: string;
     createdAt: Date;
 }
 
@@ -74,9 +74,11 @@ export function GeneratedGrid({ images, isLoading }: GeneratedGridProps) {
                     </div>
 
                     {/* Badge */}
-                    <div className="absolute top-3 left-3 px-2 py-1 bg-black/60 backdrop-blur-md rounded-md text-[10px] font-medium text-white uppercase tracking-wider">
-                        {image.style}
-                    </div>
+                    {image.style && (
+                        <div className="absolute top-3 left-3 px-2 py-1 bg-black/60 backdrop-blur-md rounded-md text-[10px] font-medium text-white uppercase tracking-wider">
+                            {image.style}
+                        </div>
+                    )}
                 </div>
             ))}
         </div>

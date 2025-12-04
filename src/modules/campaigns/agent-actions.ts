@@ -57,6 +57,23 @@ export async function updateStrategyAction(campaignId: string, strategy: Campaig
     }
 }
 
+export async function approveStrategyAction(campaignId: string) {
+    try {
+        const supabase = await createClient();
+        const { error } = await supabase
+            .from('campaigns')
+            .update({ status: 'completed', agent_status: 'completed' })
+            .eq('id', campaignId);
+
+        if (error) throw error;
+
+        revalidatePath(`/dashboard/[orgId]/campaigns/${campaignId}`);
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
 export async function updateVideoBlueprintAction(
     campaignId: string,
     input: { strategy: CampaignStrategy; duration: VideoDuration; aspectRatio: VideoAspectRatio },

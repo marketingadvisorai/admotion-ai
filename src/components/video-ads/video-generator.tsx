@@ -4,7 +4,6 @@ import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowUpRight, AudioLines, Loader2 } from 'lucide-react';
-import { AspectDropdown, AspectOption } from '@/components/ads/aspect-dropdown';
 import { AnalyzedBrandProfile, BrandPicker } from '@/components/ads/brand-picker';
 import { ModelDropdown } from '@/components/ads/model-dropdown';
 import { QuickPrompts } from '@/components/ads/quick-prompts';
@@ -27,12 +26,6 @@ interface BrandIdentityLite {
   colors?: Array<{ name: string; value: string; type: string }>;
   strategy?: { brand_voice?: string; target_audience?: string; values?: string[] };
 }
-
-const aspectOptions: AspectOption<AspectRatioVideo>[] = [
-  { value: '16:9', label: '16:9', hint: 'Wide', visualWidth: 'w-10' },
-  { value: '1:1', label: '1:1', hint: 'Square', visualWidth: 'w-7' },
-  { value: '9:16', label: '9:16', hint: 'Vertical', visualWidth: 'w-5' },
-];
 
 const promptExamples = [
   {
@@ -186,7 +179,7 @@ export function VideoGenerator({ displayName, brandKits, llmProfiles, orgId }: V
     title: item.title,
     prompt: item.prompt,
     image: item.image,
-    meta: `${item.aspect} · ${item.duration}s`,
+    meta: '',
   }));
 
   return (
@@ -260,7 +253,6 @@ export function VideoGenerator({ displayName, brandKits, llmProfiles, orgId }: V
                         setReferenceImages((prev) => [url, ...prev].slice(0, 4));
                       }}
                     />
-                    <AspectDropdown value={selectedAspect} options={aspectOptions} onChange={setSelectedAspect} />
                     <ModelDropdown profiles={llmProfiles} value={selectedLlmProfile} onChange={setSelectedLlmProfile} />
                   </div>
 
