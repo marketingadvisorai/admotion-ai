@@ -1,8 +1,81 @@
 'use server';
 
 import { createClient } from '@/lib/db/server';
-import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+
+export interface OrgSecret {
+    id: string;
+    name: string;
+    value: string; // In a real app, don't return this fully
+    created_at: string;
+}
+
+export async function getOrgSecretsAction(orgId: string) {
+    try {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from('organization_secrets')
+            .select('*')
+            .eq('org_id', orgId);
+
+        if (error) throw error;
+
+        // Mask values for security when sending to client
+        const maskedSecrets = data.map(secret => ({
+            ...secret,
+            value: secret.value ? `${secret.value.substring(0, 3)}...${secret.value.substring(secret.value.length - 4)}` : ''
+        }));
+
+        return { success: true, data: maskedSecrets };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function saveOrgSecretAction(orgId: string, name: string, value: string) {
+    try {
+        const supabase = await createClient();
+
+        // Check permissions (RLS handles this, but good to be explicit if needed)
+
+        const { error } = await supabase
+            .from('organization_secrets')
+            .upsert({
+                org_id: orgId,
+                name,
+                value,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'org_id, name' });
+
+        if (error) throw error;
+
+        revalidatePath(`/dashboard/${orgId}/settings`);
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function deleteOrgSecretAction(orgId: string, name: string) {
+    try {
+        const supabase = await createClient();
+        const { error } = await supabase
+            .from('organization_secrets')
+            .delete()
+            .eq('org_id', orgId)
+            .eq('name', name);
+
+        if (error) throw error;
+
+        revalidatePath(`/dashboard/${orgId}/settings`);
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+
+import { redirect } from 'next/navigation';
 import { Organization } from '@/modules/auth/types';
 
 export async function createOrganization(formData: FormData) {

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Trash2, Edit2, Palette } from 'lucide-react';
 import { deleteBrandKitAction } from '@/modules/brand-kits/actions';
 import { useActionState } from 'react';
+import { EditBrandKitDialog } from './edit-brand-kit-dialog';
 
 export default function BrandKitList({ brandKits, orgId }: { brandKits: BrandKit[], orgId: string }) {
     if (brandKits.length === 0) {
@@ -20,32 +21,37 @@ export default function BrandKitList({ brandKits, orgId }: { brandKits: BrandKit
 
     return (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {brandKits.map((kit) => (
-                <Card key={kit.id} className="group relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-2" style={{ background: `linear-gradient(to right, ${kit.colors.primary}, ${kit.colors.secondary})` }} />
-                    <CardHeader className="pb-4">
-                        <div className="flex justify-between items-start">
-                            <CardTitle className="text-lg">{kit.name}</CardTitle>
-                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <DeleteButton id={kit.id} orgId={orgId} />
+            {brandKits.map((kit) => {
+                const primaryColor = kit.colors.find(c => c.type === 'primary')?.value || '#000000';
+                const secondaryColor = kit.colors.find(c => c.type === 'secondary')?.value || '#ffffff';
+
+                return (
+                    <Card key={kit.id} className="group relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-2" style={{ background: `linear-gradient(to right, ${primaryColor}, ${secondaryColor})` }} />
+                        <CardHeader className="pb-4">
+                            <div className="flex justify-between items-start">
+                                <CardTitle className="text-lg">{kit.name}</CardTitle>
+                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <EditBrandKitDialog orgId={orgId} brandKit={kit} />
+                                    <DeleteButton id={kit.id} orgId={orgId} />
+                                </div>
                             </div>
-                        </div>
-                        <CardDescription className="flex items-center gap-2 text-xs">
-                            <span className="font-mono bg-gray-100 px-1 rounded">{kit.fonts.heading}</span>
-                            <span>+</span>
-                            <span className="font-mono bg-gray-100 px-1 rounded">{kit.fonts.body}</span>
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex gap-2">
-                            <ColorSwatch color={kit.colors.primary} label="Primary" />
-                            <ColorSwatch color={kit.colors.secondary} label="Secondary" />
-                            {kit.colors.accent && <ColorSwatch color={kit.colors.accent} label="Accent" />}
-                            {kit.colors.background && <ColorSwatch color={kit.colors.background} label="Bg" />}
-                        </div>
-                    </CardContent>
-                </Card>
-            ))}
+                            <CardDescription className="flex items-center gap-2 text-xs">
+                                <span className="font-mono bg-gray-100 px-1 rounded">{kit.fonts.heading}</span>
+                                <span>+</span>
+                                <span className="font-mono bg-gray-100 px-1 rounded">{kit.fonts.body}</span>
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex gap-2 flex-wrap">
+                                {kit.colors.map((color, i) => (
+                                    <ColorSwatch key={i} color={color.value} label={color.name} />
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )
+            })}
         </div>
     );
 }
@@ -65,7 +71,8 @@ function ColorSwatch({ color, label }: { color: string, label: string }) {
 
 function DeleteButton({ id, orgId }: { id: string, orgId: string }) {
     const [state, formAction, isPending] = useActionState(async (prevState: any, formData: FormData) => {
-        return await deleteBrandKitAction(formData);
+        const id = formData.get('id') as string;
+        return await deleteBrandKitAction(id);
     }, null);
 
     return (

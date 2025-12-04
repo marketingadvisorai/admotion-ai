@@ -3,7 +3,7 @@
 import { AgentService } from './agent';
 import { createClient } from '@/lib/db/server';
 import { revalidatePath } from 'next/cache';
-import { CampaignStrategy } from './types';
+import { CampaignStrategy, VideoAspectRatio, VideoDuration } from './types';
 
 export async function sendMessageAction(campaignId: string, message: string) {
     try {
@@ -42,17 +42,43 @@ export async function updateStrategyAction(campaignId: string, strategy: Campaig
     }
 }
 
-export async function createDraftCampaignAction(orgId: string) {
+export async function updateVideoBlueprintAction(
+    campaignId: string,
+    input: { strategy: CampaignStrategy; duration: VideoDuration; aspectRatio: VideoAspectRatio },
+) {
+    try {
+        const supabase = await createClient();
+        const { error } = await supabase
+            .from('campaigns')
+            .update({
+                strategy: input.strategy,
+                duration: input.duration,
+                aspect_ratio: input.aspectRatio,
+            })
+            .eq('id', campaignId);
+
+        if (error) throw error;
+
+        revalidatePath(`/dashboard/[orgId]/campaigns/${campaignId}`);
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function createDraftCampaignAction(orgId: string, specs: { duration: string, aspectRatio: string }) {
     try {
         const supabase = await createClient();
         const { data, error } = await supabase
             .from('campaigns')
             .insert({
                 org_id: orgId,
-                name: 'New Campaign', // Default name, can be updated later by AI
+                name: 'New Campaign',
                 status: 'draft_chat',
                 agent_status: 'draft_chat',
-                chat_history: []
+                chat_history: [],
+                duration: specs.duration,
+                aspect_ratio: specs.aspectRatio
             })
             .select()
             .single();

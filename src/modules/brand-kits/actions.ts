@@ -1,70 +1,235 @@
 'use server';
 
+import { createClient } from '@/lib/db/server';
+import { BrandAnalyzer, BrandIdentity } from './brand-analyzer';
 import { revalidatePath } from 'next/cache';
-import { createBrandKit, deleteBrandKit, updateBrandKit } from './service';
 
-export async function createBrandKitAction(formData: FormData) {
-    const orgId = formData.get('orgId') as string;
-    const name = formData.get('name') as string;
-    const logo_url = formData.get('logo_url') as string;
-
-    const colors = {
-        primary: formData.get('color_primary') as string,
-        secondary: formData.get('color_secondary') as string,
-        accent: formData.get('color_accent') as string,
-        background: formData.get('color_background') as string,
-    };
-
-    const fonts = {
-        heading: formData.get('font_heading') as string,
-        body: formData.get('font_body') as string,
-    };
-
+export async function analyzeBrandAction(url: string, orgId?: string) {
     try {
-        await createBrandKit({ orgId, name, logo_url, colors, fonts });
-        revalidatePath(`/dashboard/${orgId}/brand-kits`);
-        return { success: true };
+        let apiKey: string | undefined;
+
+        if (orgId) {
+            const supabase = await createClient();
+            const { data } = await supabase
+                .from('organization_secrets')
+                .select('value')
+                .eq('org_id', orgId)
+                .eq('name', 'OPENAI_API_KEY')
+                .single();
+
+            if (data?.value) {
+                apiKey = data.value;
+            }
+        }
+
+        const brandIdentity = await BrandAnalyzer.analyze(url, apiKey, orgId);
+        return { success: true, data: brandIdentity };
     } catch (error: any) {
-        return { error: error.message };
+        return { success: false, error: error.message };
     }
 }
 
-export async function updateBrandKitAction(formData: FormData) {
-    const id = formData.get('id') as string;
-    const orgId = formData.get('orgId') as string;
-    const name = formData.get('name') as string;
-    const logo_url = formData.get('logo_url') as string;
-
-    const colors = {
-        primary: formData.get('color_primary') as string,
-        secondary: formData.get('color_secondary') as string,
-        accent: formData.get('color_accent') as string,
-        background: formData.get('color_background') as string,
-    };
-
-    const fonts = {
-        heading: formData.get('font_heading') as string,
-        body: formData.get('font_body') as string,
-    };
+async function uploadLogoToStorage(logoUrl: string, orgId: string): Promise<string> {
+    if (!logoUrl) return '';
 
     try {
-        await updateBrandKit({ id, orgId, name, logo_url, colors, fonts });
-        revalidatePath(`/dashboard/${orgId}/brand-kits`);
-        return { success: true };
-    } catch (error: any) {
-        return { error: error.message };
+        // If it's already an internal Supabase URL, skip
+        if (logoUrl.includes('supabase.co')) return logoUrl;
+
+        const supabase = await createClient();
+        let buffer: Buffer | ArrayBuffer;
+        let contentType: string;
+        let fileExt: string;
+
+        if (logoUrl.startsWith('data:')) {
+            // Handle data URI
+            const matches = logoUrl.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+            if (!matches || matches.length !== 3) {
+                return logoUrl; // Invalid data URI, return as is
+            }
+            contentType = matches[1];
+            buffer = Buffer.from(matches[2], 'base64');
+            fileExt = contentType.split('/')[1] || 'png';
+        } else {
+            // Handle remote URL
+            const response = await fetch(logoUrl);
+            if (!response.ok) throw new Error('Failed to fetch logo');
+
+            const blob = await response.blob();
+            buffer = await blob.arrayBuffer();
+            contentType = blob.type || 'image/png';
+            fileExt = logoUrl.split('.').pop()?.split('?')[0] || 'png';
+        }
+
+        const fileName = `${orgId}/${Date.now()}-logo.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+            .from('brand-assets')
+            .upload(fileName, buffer, {
+                contentType,
+                upsert: true
+            });
+
+        if (uploadError) {
+            console.error('Upload error:', uploadError);
+            return logoUrl; // Fallback to original URL
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('brand-assets')
+            .getPublicUrl(fileName);
+
+        return publicUrl;
+    } catch (error) {
+        console.error('Failed to process logo:', error);
+        return logoUrl; // Fallback to original URL
     }
 }
 
-export async function deleteBrandKitAction(formData: FormData) {
-    const id = formData.get('id') as string;
-    const orgId = formData.get('orgId') as string;
-
+async function deleteLogoFromStorage(logoUrl: string) {
+    if (!logoUrl || !logoUrl.includes('brand-assets')) return;
     try {
-        await deleteBrandKit(id);
-        revalidatePath(`/dashboard/${orgId}/brand-kits`);
+        const supabase = await createClient();
+        // Extract path from URL. Usually: .../storage/v1/object/public/brand-assets/orgId/filename
+        const path = logoUrl.split('/brand-assets/')[1];
+        if (path) {
+            await supabase.storage.from('brand-assets').remove([path]);
+        }
+    } catch (error) {
+        console.error('Error deleting logo from storage:', error);
+    }
+}
+
+export async function createBrandKitAction(data: any) {
+    try {
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        console.log('Action User ID:', user?.id);
+        console.log('Action Org ID:', data.org_id);
+
+        const { data: brandKit, error } = await supabase
+            .from('brand_kits')
+            .insert({
+                org_id: data.org_id,
+                name: data.name,
+                website_url: data.website_url,
+                business_name: data.business_name,
+                description: data.description,
+                locations: data.locations,
+                colors: data.colors,
+                fonts: data.fonts,
+                social_links: data.social_links,
+                logo_url: await uploadLogoToStorage(data.logo_url, data.org_id),
+                offerings: data.offerings,
+                strategy: data.strategy
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Database error creating brand kit:', error);
+            throw error;
+        }
+
+        console.log('Brand kit created successfully:', brandKit);
+
+        revalidatePath(`/dashboard/${data.org_id}/brand-kits`);
+        return { success: true, data: brandKit };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function updateBrandKitAction(id: string, data: any) {
+    try {
+        const supabase = await createClient();
+
+        // 1. Fetch current brand kit to get the old logo URL
+        const { data: currentKit } = await supabase
+            .from('brand_kits')
+            .select('logo_url')
+            .eq('id', id)
+            .single();
+
+        const newLogoUrl = await uploadLogoToStorage(data.logo_url, data.org_id);
+
+        // 2. Update the brand kit
+        const { error } = await supabase
+            .from('brand_kits')
+            .update({
+                name: data.name,
+                website_url: data.website_url,
+                business_name: data.business_name,
+                description: data.description,
+                locations: data.locations,
+                colors: data.colors,
+                fonts: data.fonts,
+                social_links: data.social_links,
+                logo_url: newLogoUrl,
+                offerings: data.offerings,
+                strategy: data.strategy,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id);
+
+        if (error) throw error;
+
+        // 3. Cleanup old logo if it changed and exists in storage
+        if (currentKit?.logo_url && currentKit.logo_url !== newLogoUrl) {
+            await deleteLogoFromStorage(currentKit.logo_url);
+        }
+
+        revalidatePath('/dashboard/[orgId]/brand-kits');
         return { success: true };
     } catch (error: any) {
-        return { error: error.message };
+        return { success: false, error: error.message };
+    }
+}
+
+export async function deleteBrandKitAction(id: string) {
+    try {
+        const supabase = await createClient();
+
+        // 1. Fetch the brand kit to get the logo URL before deleting
+        const { data: brandKit } = await supabase
+            .from('brand_kits')
+            .select('logo_url')
+            .eq('id', id)
+            .single();
+
+        // 2. Delete the record
+        const { error } = await supabase
+            .from('brand_kits')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        // 3. Cleanup logo from storage
+        if (brandKit?.logo_url) {
+            await deleteLogoFromStorage(brandKit.logo_url);
+        }
+
+        revalidatePath('/dashboard/[orgId]/brand-kits');
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function getBrandKits(orgId: string) {
+    try {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from('brand_kits')
+            .select('*')
+            .eq('org_id', orgId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        return { success: true, data };
+    } catch (error: any) {
+        return { success: false, error: error.message };
     }
 }

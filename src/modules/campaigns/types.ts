@@ -1,6 +1,7 @@
 export type CampaignStatus = 'draft' | 'draft_chat' | 'strategy_review' | 'generating' | 'completed';
 export type VideoPlatform = 'tiktok' | 'youtube_shorts' | 'instagram_reels' | 'linkedin' | 'twitter';
 export type VideoAspectRatio = '9:16' | '16:9' | '1:1';
+export type VideoDuration = '15' | '30' | '60';
 
 export interface ChatMessage {
     role: 'user' | 'assistant' | 'system';
@@ -33,6 +34,8 @@ export interface Campaign {
     name: string;
     brief: string | null;
     platform: VideoPlatform | null;
+    aspect_ratio: VideoAspectRatio | null;
+    duration: VideoDuration | null;
     status: CampaignStatus;
     chat_history: ChatMessage[];
     strategy: CampaignStrategy | null;

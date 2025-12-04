@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { createClient } from '@/lib/db/server';
 import { Campaign, ChatMessage, CampaignStrategy } from './types';
+import { recordLlmUsage } from '@/modules/llm/usage';
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -60,6 +61,19 @@ export class AgentService {
             .update({ chat_history: finalHistory })
             .eq('id', campaignId);
 
+        if (completion.usage && campaign.org_id) {
+            await recordLlmUsage({
+                orgId: campaign.org_id,
+                campaignId,
+                provider: 'openai',
+                model: 'gpt-4o',
+                kind: 'chat',
+                inputTokens: completion.usage.prompt_tokens ?? 0,
+                outputTokens: completion.usage.completion_tokens ?? 0,
+                totalTokens: completion.usage.total_tokens ?? 0,
+            });
+        }
+
         return aiResponse;
     }
 
@@ -106,6 +120,19 @@ export class AgentService {
                 agent_status: 'strategy_review'
             })
             .eq('id', campaignId);
+
+        if (completion.usage && campaign.org_id) {
+            await recordLlmUsage({
+                orgId: campaign.org_id,
+                campaignId,
+                provider: 'openai',
+                model: 'gpt-4o',
+                kind: 'strategy',
+                inputTokens: completion.usage.prompt_tokens ?? 0,
+                outputTokens: completion.usage.completion_tokens ?? 0,
+                totalTokens: completion.usage.total_tokens ?? 0,
+            });
+        }
 
         return strategy;
     }

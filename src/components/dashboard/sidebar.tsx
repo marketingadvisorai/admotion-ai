@@ -22,6 +22,8 @@ export function Sidebar({ user, orgs, signOutAction }: SidebarProps) {
     const links = [
         { href: `/dashboard/${orgId}`, label: 'Campaigns', exact: true },
         { href: `/dashboard/${orgId}/brand-kits`, label: 'Brand Kits' },
+        { href: `/dashboard/${orgId}/brand-optimizer`, label: 'Brand Optimizer' },
+        { href: `/dashboard/${orgId}/image-ads`, label: 'Image Ads' },
         { href: `/dashboard/${orgId}/assets`, label: 'Assets' },
         { href: `/dashboard/${orgId}/settings`, label: 'Settings' },
     ];
