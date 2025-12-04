@@ -6,12 +6,13 @@ export async function POST(request: Request) {
         const body = await request.json();
         const url = (body?.url as string | undefined)?.trim();
         const orgId = (body?.orgId as string | undefined)?.trim();
+        const model = (body?.model as string | undefined)?.trim();
 
         if (!url || !orgId) {
             return NextResponse.json({ success: false, error: 'Missing url or orgId' }, { status: 400 });
         }
 
-        const result = await createBrandKitFromUrlAction(url, orgId);
+        const result = await createBrandKitFromUrlAction(url, orgId, model);
 
         if (!result.success || !result.data) {
             return NextResponse.json({ success: false, error: result.error || 'Failed to create brand kit' }, { status: 500 });

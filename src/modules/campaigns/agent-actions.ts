@@ -5,9 +5,9 @@ import { createClient } from '@/lib/db/server';
 import { revalidatePath } from 'next/cache';
 import { CampaignStrategy, VideoAspectRatio, VideoDuration } from './types';
 
-export async function sendMessageAction(campaignId: string, message: string) {
+export async function sendMessageAction(campaignId: string, message: string, modelSlug = 'gpt-5.1') {
     try {
-        const response = await AgentService.chat(campaignId, message);
+        const response = await AgentService.chat(campaignId, message, modelSlug);
         revalidatePath(`/dashboard/[orgId]/campaigns/${campaignId}`);
         return { success: true, response };
     } catch (error: any) {
@@ -15,9 +15,9 @@ export async function sendMessageAction(campaignId: string, message: string) {
     }
 }
 
-export async function generateStrategyAction(campaignId: string) {
+export async function generateStrategyAction(campaignId: string, modelSlug = 'gpt-5.1') {
     try {
-        const strategy = await AgentService.generateStrategy(campaignId);
+        const strategy = await AgentService.generateStrategy(campaignId, modelSlug);
         revalidatePath(`/dashboard/[orgId]/campaigns/${campaignId}`);
         return { success: true, strategy };
     } catch (error: any) {

@@ -4,7 +4,7 @@ import { createClient } from '@/lib/db/server';
 import { BrandAnalyzer, BrandIdentity } from './brand-analyzer';
 import { revalidatePath } from 'next/cache';
 
-export async function analyzeBrandAction(url: string, orgId?: string) {
+export async function analyzeBrandAction(url: string, orgId?: string, model?: string) {
     try {
         let apiKey: string | undefined;
 
@@ -22,20 +22,20 @@ export async function analyzeBrandAction(url: string, orgId?: string) {
             }
         }
 
-        const brandIdentity = await BrandAnalyzer.analyze(url, apiKey, orgId);
+        const brandIdentity = await BrandAnalyzer.analyze(url, apiKey, orgId, model);
         return { success: true, data: brandIdentity };
     } catch (error: any) {
         return { success: false, error: error.message };
     }
 }
 
-export async function createBrandKitFromUrlAction(url: string, orgId: string) {
+export async function createBrandKitFromUrlAction(url: string, orgId: string, model?: string) {
     if (!url || !orgId) {
         return { success: false, error: 'Missing url or orgId' };
     }
 
     try {
-        const analysisResult = await analyzeBrandAction(url, orgId);
+        const analysisResult = await analyzeBrandAction(url, orgId, model);
         if (!analysisResult.success || !analysisResult.data) {
             return { success: false, error: analysisResult.error || 'Failed to analyze brand' };
         }

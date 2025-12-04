@@ -7,6 +7,7 @@ interface ModelOption {
   value: string;
   label: string;
   detail?: string;
+  bestFor?: string;
 }
 
 interface ModelDropdownProps {
@@ -18,8 +19,9 @@ interface ModelDropdownProps {
 
 export function ModelDropdown({ profiles, value, onChange, extraOptions = [] }: ModelDropdownProps) {
   const builtIns: ModelOption[] = [
-    { value: 'chatgpt', label: 'ChatGPT' },
-    { value: 'nano-banana', label: 'Nano Banana' },
+    { value: 'gpt-5.1', label: 'GPT 5.1', detail: 'OpenAI', bestFor: 'Precision copy, CTAs' },
+    { value: 'gemini-3', label: 'Gemini 3', detail: 'Google', bestFor: 'Vision-heavy, structured' },
+    { value: 'claude-4.5', label: 'Claude 4.5', detail: 'Anthropic', bestFor: 'Long scripts, reasoning' },
   ];
 
   const dynamicOptions: ModelOption[] = profiles.map((profile) => ({
@@ -29,6 +31,7 @@ export function ModelDropdown({ profiles, value, onChange, extraOptions = [] }: 
   }));
 
   const options = [...builtIns, ...extraOptions, ...dynamicOptions];
+  const selectedLabel = options.find((option) => option.value === value)?.label || value || 'Model';
 
   return (
     <DropdownMenu>
@@ -38,7 +41,7 @@ export function ModelDropdown({ profiles, value, onChange, extraOptions = [] }: 
           size="sm"
           className="rounded-full border-white/80 bg-white/90 text-slate-800 shadow-sm"
         >
-          {value || 'Model'}
+          {selectedLabel}
           <ChevronDown className="ml-1 size-4 text-slate-500" />
         </Button>
       </DropdownMenuTrigger>
@@ -49,7 +52,12 @@ export function ModelDropdown({ profiles, value, onChange, extraOptions = [] }: 
           <DropdownMenuItem key={option.value} onClick={() => onChange(option.value)}>
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-slate-900">{option.label}</span>
-              {option.detail && <span className="text-xs text-slate-500">{option.detail}</span>}
+              {option.detail && (
+                <span className="text-xs text-slate-500">
+                  {option.detail}
+                  {option.bestFor ? ` • ${option.bestFor}` : ''}
+                </span>
+              )}
             </div>
             {value === option.value && <Check className="ml-auto size-4 text-blue-600" />}
           </DropdownMenuItem>

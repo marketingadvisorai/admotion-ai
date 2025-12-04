@@ -98,7 +98,7 @@ Rules:
 - Keep every text field succinct; no fluff.`;
 
 export class BrandAnalyzer {
-    static async analyze(rawUrl: string, apiKey?: string, orgId?: string): Promise<BrandIdentity> {
+    static async analyze(rawUrl: string, apiKey?: string, orgId?: string, modelOverride?: string): Promise<BrandIdentity> {
         const url = normalizeUrl(rawUrl);
         const key = apiKey || process.env.OPENAI_API_KEY;
 
@@ -163,7 +163,7 @@ export class BrandAnalyzer {
             // 4. Resolve LLM profile if configured (super admin can override model/prompt)
             const profile = await getLlmProfile('brand_analyzer');
             const systemPrompt = profile?.system_prompt || SYSTEM_PROMPT;
-            const model = profile?.model || 'gpt-4o';
+            const model = modelOverride || profile?.model || 'gpt-4o';
             const temperature = profile?.temperature ?? 0.2;
             const maxTokens = profile?.max_tokens ?? 700;
 

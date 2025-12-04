@@ -8,6 +8,7 @@ export async function generateImageAction(formData: FormData) {
     const campaignId = formData.get('campaignId') as string;
     const prompt = formData.get('prompt') as string;
     const size = (formData.get('size') as string | null) || '1024x1024';
+    const modelSlug = (formData.get('modelSlug') as string | null) || 'gpt-5.1';
 
     try {
         await createImageGeneration({
@@ -15,6 +16,7 @@ export async function generateImageAction(formData: FormData) {
             campaignId,
             prompt,
             size: size as any,
+            modelSlug,
         });
 
         revalidatePath(`/dashboard/${orgId}/campaigns/${campaignId}`);
@@ -23,4 +25,3 @@ export async function generateImageAction(formData: FormData) {
         return { error: error.message };
     }
 }
-

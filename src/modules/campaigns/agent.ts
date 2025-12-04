@@ -2,10 +2,7 @@ import OpenAI from 'openai';
 import { createClient } from '@/lib/db/server';
 import { Campaign, ChatMessage, CampaignStrategy } from './types';
 import { recordLlmUsage } from '@/modules/llm/usage';
-
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
+import { getProviderApiKey, resolveLlmConfig } from '@/modules/llm/config';
 
 const SYSTEM_PROMPT = `You are an expert Video Marketing Strategist for Admotion AI. 
 Your goal is to help the user create a high-converting video ad.
@@ -27,7 +24,7 @@ Return the response in valid JSON format matching the following schema:
 }`;
 
 export class AgentService {
-    static async chat(campaignId: string, message: string): Promise<string> {
+    static async chat(campaignId: string, message: string, modelSlug = 'gpt-5.1'): Promise<string> {
         const supabase = await createClient();
 
         // 1. Fetch Campaign
@@ -43,9 +40,16 @@ export class AgentService {
         const history: ChatMessage[] = (campaign.chat_history as any) || [];
         const newHistory = [...history, { role: 'user', content: message }];
 
+        const config = await resolveLlmConfig(modelSlug);
+        if (config.provider !== 'openai') {
+            throw new Error(`Provider ${config.provider} is not yet enabled for campaign chat. Please select an OpenAI-based profile.`);
+        }
+        const apiKey = await getProviderApiKey('openai', campaign.org_id);
+        const openai = new OpenAI({ apiKey });
+
         // 3. Call OpenAI
         const completion = await openai.chat.completions.create({
-            model: 'gpt-4o',
+            model: config.model,
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 ...(newHistory as any),
@@ -65,8 +69,8 @@ export class AgentService {
             await recordLlmUsage({
                 orgId: campaign.org_id,
                 campaignId,
-                provider: 'openai',
-                model: 'gpt-4o',
+                provider: config.provider,
+                model: config.model,
                 kind: 'chat',
                 inputTokens: completion.usage.prompt_tokens ?? 0,
                 outputTokens: completion.usage.completion_tokens ?? 0,
@@ -77,7 +81,7 @@ export class AgentService {
         return aiResponse;
     }
 
-    static async generateStrategy(campaignId: string): Promise<CampaignStrategy> {
+    static async generateStrategy(campaignId: string, modelSlug = 'gpt-5.1'): Promise<CampaignStrategy> {
         const supabase = await createClient();
 
         const { data: campaign, error } = await supabase
@@ -90,8 +94,15 @@ export class AgentService {
 
         const history = (campaign.chat_history as any) || [];
 
+        const config = await resolveLlmConfig(modelSlug);
+        if (config.provider !== 'openai') {
+            throw new Error(`Provider ${config.provider} is not yet enabled for strategy generation. Please select an OpenAI-based profile.`);
+        }
+        const apiKey = await getProviderApiKey('openai', campaign.org_id);
+        const openai = new OpenAI({ apiKey });
+
         const completion = await openai.chat.completions.create({
-            model: 'gpt-4o',
+            model: config.model,
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 ...(history as any),
@@ -125,8 +136,8 @@ export class AgentService {
             await recordLlmUsage({
                 orgId: campaign.org_id,
                 campaignId,
-                provider: 'openai',
-                model: 'gpt-4o',
+                provider: config.provider,
+                model: config.model,
                 kind: 'strategy',
                 inputTokens: completion.usage.prompt_tokens ?? 0,
                 outputTokens: completion.usage.completion_tokens ?? 0,

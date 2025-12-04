@@ -35,6 +35,7 @@ export default function ImageGenerationDialog({
     const [open, setOpen] = useState(false);
     const [prompt, setPrompt] = useState('');
     const [selectedSize, setSelectedSize] = useState('1024x1024');
+    const [selectedModel, setSelectedModel] = useState('gpt-5.1');
     const [state, formAction, isPending] = useActionState(
         async (prevState: any, formData: FormData) => {
             const result = await generateImageAction(formData);
@@ -78,6 +79,7 @@ export default function ImageGenerationDialog({
                     <input type="hidden" name="orgId" value={orgId} />
                     <input type="hidden" name="campaignId" value={campaignId} />
                     <input type="hidden" name="size" value={selectedSize} />
+                    <input type="hidden" name="modelSlug" value={selectedModel} />
 
                     <div className="p-6 space-y-6">
                         {/* Main Input Area */}
@@ -155,6 +157,25 @@ export default function ImageGenerationDialog({
                                         <SelectItem value="3d-render">3D Render</SelectItem>
                                     </SelectContent>
                                 </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground ml-1">
+                                    Model
+                                </Label>
+                                <Select value={selectedModel} onValueChange={setSelectedModel}>
+                                    <SelectTrigger className="h-[52px] glass-input border-0 rounded-xl">
+                                        <SelectValue placeholder="Select model" />
+                                    </SelectTrigger>
+                                    <SelectContent className="glass-panel border-white/20">
+                                        <SelectItem value="gpt-5.1">GPT 5.1 (recommended)</SelectItem>
+                                        <SelectItem value="gemini-3">Gemini 3 (vision-heavy)</SelectItem>
+                                        <SelectItem value="claude-4.5">Claude 4.5 (long-form)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-[11px] text-muted-foreground">
+                                    GPT 5.1 is fully supported. Others require provider setup.
+                                </p>
                             </div>
                         </div>
                     </div>

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Send, Bot, User, Sparkles } from 'lucide-react';
 import { ChatMessage } from '@/modules/campaigns/types';
 import { sendMessageAction, generateStrategyAction } from '@/modules/campaigns/agent-actions';
@@ -21,6 +22,7 @@ export function ChatInterface({ campaignId, initialHistory, onStrategyGenerated 
     const [messages, setMessages] = useState<ChatMessage[]>(initialHistory);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [modelSlug, setModelSlug] = useState('gpt-5.1');
     const scrollRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
 
@@ -38,7 +40,7 @@ export function ChatInterface({ campaignId, initialHistory, onStrategyGenerated 
         setInput('');
         setIsLoading(true);
 
-        const result = await sendMessageAction(campaignId, input);
+        const result = await sendMessageAction(campaignId, input, modelSlug);
 
         if (result.success && result.response) {
             const aiMessage: ChatMessage = { role: 'assistant', content: result.response };
@@ -53,7 +55,7 @@ export function ChatInterface({ campaignId, initialHistory, onStrategyGenerated 
 
     const handleGenerateStrategy = async () => {
         setIsLoading(true);
-        const result = await generateStrategyAction(campaignId);
+        const result = await generateStrategyAction(campaignId, modelSlug);
         if (result.success && result.strategy) {
             onStrategyGenerated(result.strategy);
             router.refresh();
@@ -68,17 +70,30 @@ export function ChatInterface({ campaignId, initialHistory, onStrategyGenerated 
                     <Bot className="w-5 h-5 text-blue-600" />
                     <span className="font-semibold">Admotion Strategist</span>
                 </div>
-                {messages.length > 2 && (
-                    <Button
-                        size="sm"
-                        onClick={handleGenerateStrategy}
-                        disabled={isLoading}
-                        className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0"
-                    >
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        Generate Strategy
-                    </Button>
-                )}
+                <div className="flex items-center gap-3">
+                    <Select value={modelSlug} onValueChange={setModelSlug}>
+                        <SelectTrigger className="h-9 w-[170px]">
+                            <SelectValue placeholder="Model" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="gpt-5.1">GPT 5.1 (OpenAI)</SelectItem>
+                            <SelectItem value="gemini-3">Gemini 3 (Google)</SelectItem>
+                            <SelectItem value="claude-4.5">Claude 4.5 (Anthropic)</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    {messages.length > 2 && (
+                        <Button
+                            size="sm"
+                            onClick={handleGenerateStrategy}
+                            disabled={isLoading}
+                            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0"
+                        >
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            Generate Strategy
+                        </Button>
+                    )}
+                </div>
             </div>
 
             <ScrollArea className="flex-1 p-4">

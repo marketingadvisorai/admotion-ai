@@ -2,36 +2,25 @@ import { createClient } from '@/lib/db/server';
 import OpenAI from 'openai';
 import { uploadFromUrl } from '@/lib/storage';
 import { recordLlmUsage } from '@/modules/llm/usage';
+import { getProviderApiKey, resolveLlmConfig } from '@/modules/llm/config';
 
 export interface CreateImageGenerationInput {
     orgId: string;
     campaignId: string;
     prompt: string;
     size?: '1024x1024' | '1024x576' | '576x1024';
-}
-
-async function getOpenAiKeyForOrg(orgId: string): Promise<string> {
-    const supabase = await createClient();
-
-    const { data } = await supabase
-        .from('organization_secrets')
-        .select('value')
-        .eq('org_id', orgId)
-        .eq('name', 'OPENAI_API_KEY')
-        .single();
-
-    const key = data?.value || process.env.OPENAI_API_KEY;
-    if (!key) {
-        throw new Error('OpenAI API Key is not configured. Add it in Settings → Integrations.');
-    }
-
-    return key;
+    modelSlug?: string;
 }
 
 export async function createImageGeneration(input: CreateImageGenerationInput) {
     const supabase = await createClient();
 
-    const apiKey = await getOpenAiKeyForOrg(input.orgId);
+    const config = await resolveLlmConfig(input.modelSlug || 'gpt-5.1');
+    if (config.provider !== 'openai') {
+        throw new Error(`Image generation currently supports OpenAI only. Please select an OpenAI-based model.`);
+    }
+
+    const apiKey = await getProviderApiKey('openai', input.orgId);
     const openai = new OpenAI({ apiKey });
 
     let size: '1024x1024' | '1792x1024' | '1024x1792' = '1024x1024';
@@ -72,8 +61,8 @@ export async function createImageGeneration(input: CreateImageGenerationInput) {
     await recordLlmUsage({
         orgId: input.orgId,
         campaignId: input.campaignId,
-        provider: 'openai',
-        model: 'gpt-image-1',
+        provider: config.provider,
+        model: 'dall-e-3',
         kind: 'image',
         unitCount: 1,
     });

@@ -10,6 +10,7 @@ import { ModelDropdown } from '@/components/ads/model-dropdown';
 import { QuickPrompts } from '@/components/ads/quick-prompts';
 import { TypeSelect } from '@/components/ads/type-select';
 import { ResultGridVideo } from '@/components/ads/result-grid-video';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BrandKit } from '@/modules/brand-kits/types';
 import { LlmProfile } from '@/modules/llm/types';
 import { AspectRatioVideo, GeneratedVideo } from './types';
@@ -28,6 +29,16 @@ interface BrandIdentityLite {
   logo_url?: string;
   colors?: Array<{ name: string; value: string; type: string }>;
   strategy?: { brand_voice?: string; target_audience?: string; values?: string[] };
+}
+
+interface VideoRecipe {
+  id: string;
+  name: string;
+  model: string;
+  aspect: AspectRatioVideo;
+  duration: number;
+  providerId: string;
+  prompt: string;
 }
 
 const aspectOptions: AspectOption<AspectRatioVideo>[] = [
@@ -88,7 +99,7 @@ export function VideoGenerator({ displayName, brandKits, llmProfiles, providers,
   const [selectedAspect, setSelectedAspect] = useState<AspectRatioVideo>('16:9');
   const [duration, setDuration] = useState<number>(10);
   const [providerId, setProviderId] = useState<string>(providers[0]?.id || 'runway');
-  const [selectedLlmProfile, setSelectedLlmProfile] = useState<string>('chatgpt');
+  const [selectedLlmProfile, setSelectedLlmProfile] = useState<string>(() => llmProfiles[0]?.slug || 'gpt-5.1');
   const [selectedBrandKitId, setSelectedBrandKitId] = useState<string>(brandKitOptions[0]?.id || '');
   const [selectedAnalyzerId, setSelectedAnalyzerId] = useState<string>('');
   const [brandAnalysis, setBrandAnalysis] = useState<BrandIdentityLite | null>(null);
@@ -97,6 +108,74 @@ export function VideoGenerator({ displayName, brandKits, llmProfiles, providers,
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedVideos, setGeneratedVideos] = useState<GeneratedVideo[]>([]);
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
+  const [recipes, setRecipes] = useState<VideoRecipe[]>([]);
+  const [selectedRecipeId, setSelectedRecipeId] = useState<string>('none');
+
+  const videoPresets: Array<{ id: string; label: string; aspect: AspectRatioVideo; duration: number; prompt: string; badge?: string }> = [
+    {
+      id: 'ig-reel',
+      label: 'IG Reel',
+      aspect: '9:16',
+      duration: 12,
+      prompt: 'Instagram Reel ad: vertical, fast cuts, hook in first 2s, overlay CTA.',
+      badge: 'Vertical',
+    },
+    {
+      id: 'fb-feed',
+      label: 'FB Feed',
+      aspect: '1:1',
+      duration: 10,
+      prompt: 'Facebook feed video: square frame, headline text, benefit + CTA in first 5s.',
+      badge: 'Square',
+    },
+    {
+      id: 'yt-landscape',
+      label: 'YouTube',
+      aspect: '16:9',
+      duration: 15,
+      prompt: 'YouTube in-feed: widescreen, clear narrative arc, CTA by second half.',
+      badge: 'Wide',
+    },
+  ];
+
+  const applyVideoPreset = (presetId: string) => {
+    const preset = videoPresets.find((p) => p.id === presetId);
+    if (!preset) return;
+    setSelectedAspect(preset.aspect);
+    setDuration(preset.duration);
+    setPrompt(preset.prompt);
+  };
+
+  const saveRecipe = () => {
+    const name = window.prompt('Name this recipe');
+    if (!name) return;
+    const recipe: VideoRecipe = {
+      id: crypto.randomUUID(),
+      name,
+      model: selectedLlmProfile,
+      aspect: selectedAspect,
+      duration,
+      providerId,
+      prompt,
+    };
+    setRecipes((prev) => [recipe, ...prev]);
+    setSelectedRecipeId(recipe.id);
+  };
+
+  const applyRecipe = (id: string) => {
+    if (id === 'none') {
+      setSelectedRecipeId('none');
+      return;
+    }
+    const recipe = recipes.find((r) => r.id === id);
+    if (!recipe) return;
+    setSelectedLlmProfile(recipe.model);
+    setSelectedAspect(recipe.aspect);
+    setDuration(recipe.duration);
+    setProviderId(recipe.providerId);
+    setPrompt(recipe.prompt);
+    setSelectedRecipeId(recipe.id);
+  };
 
   const selectedBrandKit = useMemo(
     () => brandKitOptions.find((kit) => kit.id === selectedBrandKitId),
@@ -118,14 +197,14 @@ export function VideoGenerator({ displayName, brandKits, llmProfiles, providers,
     return [`Video ${duration}s ${selectedAspect} via ${providerId}.`, brandLine, prompt].filter(Boolean).join(' ');
   };
 
-  const handleAnalyzeBrand = async (url: string) => {
+  const handleAnalyzeBrand = async (url: string, model?: string) => {
     if (!url.trim()) return;
     setIsAnalyzingBrand(true);
     try {
       const res = await fetch('/api/brand/create-from-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, orgId }),
+        body: JSON.stringify({ url, orgId, model }),
       });
       const data = await res.json();
       if (data?.success && data?.data?.kit && data?.data?.analysis) {
@@ -215,6 +294,22 @@ export function VideoGenerator({ displayName, brandKits, llmProfiles, providers,
           </h1>
         </div>
 
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          {videoPresets.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              onClick={() => applyVideoPreset(preset.id)}
+              className="rounded-xl border border-white/70 bg-white/90 px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:shadow"
+            >
+              <span className="mr-2 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+                {preset.badge}
+              </span>
+              {preset.label}
+            </button>
+          ))}
+        </div>
+
         <div className="flex justify-center">
           <div className="w-full max-w-3xl">
             <div className="relative">
@@ -233,6 +328,7 @@ export function VideoGenerator({ displayName, brandKits, llmProfiles, providers,
                     <BrandPicker
                       brandKits={brandKitOptions}
                       analyzedBrands={analyzerProfiles}
+                      llmProfiles={llmProfiles}
                       selectedBrandKitId={selectedBrandKitId}
                       selectedAnalyzerId={selectedAnalyzerId}
                       brandUrl={brandUrl}
@@ -266,6 +362,24 @@ export function VideoGenerator({ displayName, brandKits, llmProfiles, providers,
                     <TypeSelect value={duration} options={[6, 8, 10, 12, 15, 20].map((v) => ({ value: v, label: `${v} seconds` }))} onChange={setDuration} label="Duration" suffix="s" />
                     <TypeSelect value={providerId} options={providers.map((p) => ({ value: p.id, label: `${p.name} (${p.id})` }))} onChange={setProviderId} label="Provider" />
                     <ModelDropdown profiles={llmProfiles} value={selectedLlmProfile} onChange={setSelectedLlmProfile} />
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" className="rounded-full" onClick={saveRecipe}>
+                        Save recipe
+                      </Button>
+                      <Select value={selectedRecipeId} onValueChange={applyRecipe}>
+                        <SelectTrigger size="sm" className="rounded-full bg-white/80 text-slate-800">
+                          <SelectValue placeholder="Apply recipe" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {recipes.map((recipe) => (
+                            <SelectItem key={recipe.id} value={recipe.id}>
+                              {recipe.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2">

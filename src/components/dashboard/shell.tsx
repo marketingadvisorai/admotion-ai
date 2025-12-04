@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils';
 import { Menu, X } from 'lucide-react';
 import { OrganizationMembership } from '@/modules/auth/types';
 import { User } from '@supabase/supabase-js';
-import { GlobalModelSwitcher } from '@/components/dashboard/global-model-switcher';
 
 interface DashboardShellProps {
   user: User;
@@ -84,12 +83,6 @@ export function DashboardShell({ user, orgs, signOutAction, children }: Dashboar
           >
             {isSidebarOpen ? <X className="size-5" /> : <Menu className="size-5" />}
           </Button>
-        </div>
-
-        <div className="pointer-events-none fixed top-5 left-1/2 z-20 -translate-x-1/2">
-          <div className="pointer-events-auto rounded-full border border-white/70 bg-white/90 px-2 shadow-sm">
-            <GlobalModelSwitcher />
-          </div>
         </div>
 
         <main
