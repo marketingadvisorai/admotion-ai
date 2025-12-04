@@ -34,15 +34,17 @@ export async function createImageGeneration(input: CreateImageGenerationInput) {
     const apiKey = await getOpenAiKeyForOrg(input.orgId);
     const openai = new OpenAI({ apiKey });
 
-    const size = input.size || '1024x1024';
+    let size: '1024x1024' | '1792x1024' | '1024x1792' = '1024x1024';
+    if (input.size === '1024x576') size = '1792x1024';
+    if (input.size === '576x1024') size = '1024x1792';
 
     const image = await openai.images.generate({
-        model: 'gpt-image-1',
+        model: 'dall-e-3',
         prompt: input.prompt,
         size,
     });
 
-    const url = image.data[0]?.url;
+    const url = image?.data?.[0]?.url;
     if (!url) {
         throw new Error('Image generation did not return a URL.');
     }

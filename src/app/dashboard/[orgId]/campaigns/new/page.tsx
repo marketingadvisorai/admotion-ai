@@ -44,29 +44,42 @@ export default function NewCampaignPage() {
     };
 
     return (
-        <div className="p-8 max-w-4xl mx-auto min-h-[80vh] flex items-center justify-center">
-            <Card className="w-full max-w-2xl border-2 border-blue-100 dark:border-blue-900 shadow-xl">
-                <CardHeader className="text-center space-y-4 pb-8">
-                    <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <Sparkles className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+        <div className="p-8 max-w-5xl mx-auto min-h-[85vh] flex items-center justify-center relative overflow-hidden">
+            {/* Background Gradients */}
+            <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl -z-10 animate-pulse" />
+            <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl -z-10 animate-pulse delay-1000" />
+
+            <Card className="w-full max-w-3xl glass-panel border-white/20 dark:border-white/10 shadow-2xl overflow-hidden relative">
+                <div className="absolute inset-0 bg-gradient-to-b from-white/40 to-transparent dark:from-white/5 pointer-events-none" />
+
+                <CardHeader className="text-center space-y-6 pb-8 pt-10 relative z-10">
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-2 shadow-lg shadow-blue-500/30 transform hover:scale-105 transition-transform duration-500">
+                        <Sparkles className="w-10 h-10 text-white" />
                     </div>
-                    <CardTitle className="text-3xl font-bold">Create High-Converting Video Ads</CardTitle>
-                    <CardDescription className="text-lg max-w-lg mx-auto">
-                        Chat with our AI Video Strategist to plan, script, and generate professional video ads for your brand.
-                    </CardDescription>
+                    <div className="space-y-2">
+                        <CardTitle className="text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">
+                            Create High-Converting Video Ads
+                        </CardTitle>
+                        <CardDescription className="text-xl max-w-xl mx-auto text-muted-foreground/90 font-light">
+                            Chat with our AI Video Strategist to plan, script, and generate professional video ads.
+                        </CardDescription>
+                    </div>
                 </CardHeader>
-                <CardContent className="space-y-8 pb-10">
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-3">
-                            <Label className="text-base font-semibold">Video Duration</Label>
-                            <div className="grid grid-cols-3 gap-2">
+
+                <CardContent className="space-y-10 pb-12 px-10 relative z-10">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-4">
+                            <Label className="text-sm font-medium uppercase tracking-wider text-muted-foreground ml-1">
+                                Video Duration
+                            </Label>
+                            <div className="flex gap-3">
                                 {['15', '30', '60'].map((d) => (
                                     <button
                                         key={d}
                                         onClick={() => setDuration(d)}
-                                        className={`px-3 py-2 rounded-lg border text-sm font-medium transition-all ${duration === d
-                                            ? 'bg-blue-600 text-white border-blue-600 shadow-md'
-                                            : 'bg-background hover:bg-muted'
+                                        className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all duration-300 border ${duration === d
+                                            ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-500/25 scale-105'
+                                            : 'bg-white/5 border-transparent hover:bg-white/10 text-muted-foreground hover:text-foreground'
                                             }`}
                                     >
                                         {d}s
@@ -74,9 +87,11 @@ export default function NewCampaignPage() {
                                 ))}
                             </div>
                         </div>
-                        <div className="space-y-3">
-                            <Label className="text-base font-semibold">Aspect Ratio</Label>
-                            <div className="grid grid-cols-3 gap-2">
+                        <div className="space-y-4">
+                            <Label className="text-sm font-medium uppercase tracking-wider text-muted-foreground ml-1">
+                                Aspect Ratio
+                            </Label>
+                            <div className="grid grid-cols-3 gap-3">
                                 {[
                                     { value: '9:16', icon: Smartphone, label: 'Vertical' },
                                     { value: '1:1', icon: Square, label: 'Square' },
@@ -85,12 +100,12 @@ export default function NewCampaignPage() {
                                     <button
                                         key={ratio.value}
                                         onClick={() => setAspectRatio(ratio.value)}
-                                        className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-medium transition-all gap-1 ${aspectRatio === ratio.value
-                                            ? 'bg-blue-600 text-white border-blue-600 shadow-md'
-                                            : 'bg-background hover:bg-muted'
+                                        className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-medium transition-all duration-300 gap-2 ${aspectRatio === ratio.value
+                                            ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-500/25 scale-105'
+                                            : 'bg-white/5 border-transparent hover:bg-white/10 text-muted-foreground hover:text-foreground'
                                             }`}
                                     >
-                                        <ratio.icon className="w-4 h-4" />
+                                        <ratio.icon className="w-5 h-5" />
                                         {ratio.label}
                                     </button>
                                 ))}
@@ -98,19 +113,36 @@ export default function NewCampaignPage() {
                         </div>
                     </div>
 
-                    <div className="flex flex-col items-center gap-4 pt-4">
+                    <div className="flex flex-col items-center gap-6 pt-6">
                         <Button
                             size="lg"
                             onClick={handleStart}
                             disabled={isLoading}
-                            className="h-14 px-10 text-lg bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all w-full sm:w-auto"
+                            className="h-16 px-12 text-xl font-semibold glass-button rounded-full w-full sm:w-auto min-w-[300px] group"
                         >
-                            {isLoading ? 'Initializing...' : 'Start Strategy Session'}
-                            {!isLoading && <ArrowRight className="w-5 h-5 ml-2" />}
+                            {isLoading ? (
+                                <span className="flex items-center gap-2">
+                                    <Sparkles className="w-5 h-5 animate-spin" />
+                                    Initializing...
+                                </span>
+                            ) : (
+                                <span className="flex items-center gap-2">
+                                    Start Strategy Session
+                                    <ArrowRight className="w-6 h-6 ml-1 group-hover:translate-x-1 transition-transform" />
+                                </span>
+                            )}
                         </Button>
-                        <p className="text-sm text-muted-foreground">
-                            Includes: Strategy • Scripting • Asset Selection • Video Generation
-                        </p>
+                        <div className="flex items-center gap-6 text-sm text-muted-foreground/80 font-medium">
+                            <span className="flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Strategy
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-purple-500" /> Scripting
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-pink-500" /> Generation
+                            </span>
+                        </div>
                     </div>
                 </CardContent>
             </Card>

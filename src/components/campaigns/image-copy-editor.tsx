@@ -9,9 +9,11 @@ interface Props {
     campaignId: string;
     prompt: string;
     onPromptChange: (value: string) => void;
+    className?: string;
+    placeholder?: string;
 }
 
-export function ImageCopyEditor({ campaignId, prompt, onPromptChange }: Props) {
+export function ImageCopyEditor({ campaignId, prompt, onPromptChange, className, placeholder }: Props) {
     const [headline, setHeadline] = useState('');
     const [body, setBody] = useState('');
     const [cta, setCta] = useState('');

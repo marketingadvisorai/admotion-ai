@@ -105,76 +105,78 @@ export function Step1Discovery({ onNext, orgId }: Step1DiscoveryProps) {
     };
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Let's start with your website</CardTitle>
-                <CardDescription>
-                    We'll use AI to analyze your website and extract your brand identity automatically.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
+        <div className="glass-panel rounded-3xl overflow-hidden">
+            <div className="p-6 border-b border-white/20 bg-white/40 backdrop-blur-md">
+                <h3 className="text-xl font-bold text-gray-900">Let's start with your website</h3>
+                <p className="text-sm text-gray-500 mt-1">We'll use AI to analyze your website and extract your brand identity automatically.</p>
+            </div>
+
+            <div className="p-6 space-y-8">
                 <div className="space-y-2">
-                    <Label>Brand Kit Name</Label>
+                    <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Brand Kit Name</Label>
                     <Input
                         {...form.register('name')}
                         placeholder="e.g. Summer Campaign 2024"
+                        className="glass-input rounded-xl border-0 ring-1 ring-black/5"
                     />
                     {form.formState.errors.name && (
-                        <p className="text-sm text-red-500">{form.formState.errors.name.message as string}</p>
+                        <p className="text-sm text-red-500">{form.formState.errors.name?.message as string}</p>
                     )}
                 </div>
 
                 {/* Magic Analyze Section */}
-                <div className="space-y-2">
-                    <Label>Website URL</Label>
-                    <div className="flex gap-2">
-                        <div className="relative flex-1">
-                            <Globe className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                {...form.register('website_url')}
-                                className="pl-9"
-                                placeholder="example.com"
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        e.preventDefault();
-                                        handleAnalyze(false);
-                                    }
-                                }}
-                            />
+                <div className="space-y-4 p-6 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 rounded-2xl border border-indigo-100/50">
+                    <div className="space-y-2">
+                        <Label className="text-xs font-semibold text-indigo-900/70 uppercase tracking-wider ml-1">Website URL</Label>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <div className="relative flex-1 group">
+                                <Globe className="absolute left-4 top-3.5 h-4 w-4 text-indigo-400 group-focus-within:text-indigo-600 transition-colors" />
+                                <Input
+                                    {...form.register('website_url')}
+                                    className="glass-input pl-11 h-11 rounded-xl border-0 ring-1 ring-indigo-200/50 focus:ring-indigo-500/30"
+                                    placeholder="example.com"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleAnalyze(false);
+                                        }
+                                    }}
+                                />
+                            </div>
+                            <Button
+                                type="button"
+                                onClick={() => handleAnalyze(false)}
+                                disabled={isAnalyzing || !websiteUrl}
+                                className="h-11 px-6 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                            >
+                                {isAnalyzing ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Analyzing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Wand2 className="mr-2 h-4 w-4" />
+                                        Magic Analyze
+                                    </>
+                                )}
+                            </Button>
                         </div>
-                        <Button
-                            type="button"
-                            onClick={() => handleAnalyze(false)}
-                            disabled={isAnalyzing || !websiteUrl}
-                            className="min-w-[140px] bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-md transition-all duration-200"
-                        >
-                            {isAnalyzing ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Analyzing...
-                                </>
-                            ) : (
-                                <>
-                                    <Wand2 className="mr-2 h-4 w-4" />
-                                    Magic Analyze
-                                </>
-                            )}
-                        </Button>
+                        {analyzeError && (
+                            <p className="text-sm text-red-500 mt-2 bg-red-50 p-3 rounded-lg border border-red-100">{analyzeError}</p>
+                        )}
+                        <p className="text-sm text-gray-500 mt-2">
+                            Enter your website URL (e.g., domain.com) and click "Magic Analyze" to automatically extract colors, fonts, and more.
+                        </p>
                     </div>
-                    {analyzeError && (
-                        <p className="text-sm text-red-500 mt-1">{analyzeError}</p>
-                    )}
-                    <p className="text-sm text-muted-foreground">
-                        Enter your website URL (e.g., domain.com) and click "Magic Analyze" to automatically extract colors, fonts, and more.
-                    </p>
                 </div>
 
                 <div className="relative py-2">
                     <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
+                        <span className="w-full border-t border-gray-200" />
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">Or fill manually</span>
+                        <span className="bg-white/80 backdrop-blur-sm px-3 text-gray-400 font-medium rounded-full border border-gray-100">Or fill manually</span>
                     </div>
                 </div>
 
@@ -182,13 +184,13 @@ export function Step1Discovery({ onNext, orgId }: Step1DiscoveryProps) {
                 <div className="grid gap-6">
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                            <Label>Business Name</Label>
+                            <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Business Name</Label>
                             {websiteUrl && !businessName && (
                                 <Button
                                     type="button"
                                     variant="ghost"
                                     size="sm"
-                                    className="h-6 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                                    className="h-6 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-full px-3"
                                     onClick={() => handleAnalyze(true)}
                                     disabled={isAnalyzing}
                                 >
@@ -201,31 +203,35 @@ export function Step1Discovery({ onNext, orgId }: Step1DiscoveryProps) {
                                 </Button>
                             )}
                         </div>
-                        <Input {...form.register('business_name')} placeholder="Acme Corp" />
+                        <Input
+                            {...form.register('business_name')}
+                            placeholder="Acme Corp"
+                            className="glass-input rounded-xl border-0 ring-1 ring-black/5"
+                        />
                         {form.formState.errors.business_name && (
-                            <p className="text-sm text-red-500">{form.formState.errors.business_name.message as string}</p>
+                            <p className="text-sm text-red-500">{form.formState.errors.business_name?.message as string}</p>
                         )}
                     </div>
 
                     <div className="space-y-2">
-                        <Label>Description</Label>
+                        <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Description</Label>
                         <Textarea
                             {...form.register('description')}
                             placeholder="Briefly describe your business..."
-                            className="h-24"
+                            className="glass-input rounded-xl border-0 ring-1 ring-black/5 min-h-[100px]"
                         />
                     </div>
                 </div>
-            </CardContent>
-            <CardFooter className="flex justify-end">
+            </div>
+            <div className="p-6 border-t border-white/20 bg-white/40 backdrop-blur-md flex justify-end">
                 <Button
                     onClick={onNext}
                     disabled={!businessName}
-                    className="w-full sm:w-auto"
+                    className="w-full sm:w-auto h-11 px-8 rounded-xl bg-gray-900 text-white hover:bg-gray-800 shadow-lg shadow-gray-900/20 transition-all duration-300"
                 >
                     Next: Identity
                 </Button>
-            </CardFooter>
-        </Card>
+            </div>
+        </div>
     );
 }

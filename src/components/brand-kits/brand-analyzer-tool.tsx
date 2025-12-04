@@ -137,24 +137,24 @@ export function BrandAnalyzerTool({ orgId, brandKits = [] }: BrandAnalyzerToolPr
     };
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto">
-            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                <div className="w-full md:w-1/3">
-                    <Label className="mb-2 block text-xs font-medium text-gray-500 uppercase tracking-wider">Select Source</Label>
+        <div className="space-y-8 w-full">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
+                <div className="md:col-span-4 space-y-2">
+                    <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Select Source</Label>
                     <Select value={selectedKitId} onValueChange={setSelectedKitId}>
-                        <SelectTrigger>
+                        <SelectTrigger className="glass-input h-12 rounded-2xl border-0 ring-1 ring-black/5 shadow-sm">
                             <SelectValue placeholder="Select a brand kit" />
                         </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="new">
+                        <SelectContent className="glass-panel border-0 rounded-xl">
+                            <SelectItem value="new" className="focus:bg-indigo-50 focus:text-indigo-900 cursor-pointer rounded-lg my-1">
                                 <span className="flex items-center gap-2">
                                     <Wand2 className="h-4 w-4 text-indigo-500" />
                                     New Analysis
                                 </span>
                             </SelectItem>
-                            {brandKits.length > 0 && <div className="h-px bg-gray-100 my-1" />}
+                            {brandKits.length > 0 && <div className="h-px bg-gray-200/50 my-1" />}
                             {brandKits.map((kit) => (
-                                <SelectItem key={kit.id} value={kit.id}>
+                                <SelectItem key={kit.id} value={kit.id} className="focus:bg-gray-50 cursor-pointer rounded-lg my-1">
                                     {kit.name}
                                 </SelectItem>
                             ))}
@@ -163,15 +163,15 @@ export function BrandAnalyzerTool({ orgId, brandKits = [] }: BrandAnalyzerToolPr
                 </div>
 
                 {/* URL Input - Always visible to allow re-analysis or new analysis */}
-                <div className="flex-1 w-full flex gap-2 items-end">
-                    <div className="relative flex-1">
-                        <Label className="mb-2 block text-xs font-medium text-gray-500 uppercase tracking-wider">Website URL</Label>
-                        <div className="relative">
-                            <Globe className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <div className="md:col-span-8 flex flex-col sm:flex-row gap-3 items-end">
+                    <div className="relative flex-1 w-full space-y-2">
+                        <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Website URL</Label>
+                        <div className="relative group">
+                            <Globe className="absolute left-4 top-4 h-4 w-4 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
                             <Input
                                 value={url}
                                 onChange={(e) => setUrl(e.target.value)}
-                                className="pl-9"
+                                className="glass-input pl-11 h-12 rounded-2xl border-0 ring-1 ring-black/5 shadow-sm text-base"
                                 placeholder="example.com"
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') handleAnalyze();
@@ -182,16 +182,16 @@ export function BrandAnalyzerTool({ orgId, brandKits = [] }: BrandAnalyzerToolPr
                     <Button
                         onClick={handleAnalyze}
                         disabled={isAnalyzing || !url}
-                        className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white mb-[2px]"
+                        className="h-12 px-8 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
                     >
                         {isAnalyzing ? (
                             <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                                 Analyzing...
                             </>
                         ) : (
                             <>
-                                {selectedKitId === 'new' ? <Wand2 className="mr-2 h-4 w-4" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                                {selectedKitId === 'new' ? <Wand2 className="mr-2 h-5 w-5" /> : <RefreshCw className="mr-2 h-5 w-5" />}
                                 {selectedKitId === 'new' ? 'Analyze' : 'Re-Analyze'}
                             </>
                         )}
@@ -206,28 +206,41 @@ export function BrandAnalyzerTool({ orgId, brandKits = [] }: BrandAnalyzerToolPr
             )}
 
             {result ? (
-                <div className="space-y-6">
-                    <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-4">
-                            <h3 className="text-lg font-medium text-gray-900">
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 rounded-2xl bg-white/30 backdrop-blur-sm border border-white/20">
+                        <div className="flex flex-col gap-1">
+                            <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                                 {selectedKitId === 'new' ? 'Analysis Results' : 'Brand Knowledge Base'}
+                                {selectedKitId === 'new' && result?.usage && (
+                                    <span className="inline-flex items-center gap-2 text-[10px] font-medium text-indigo-600 bg-indigo-50/80 px-2 py-1 rounded-full border border-indigo-100">
+                                        <span>{result.usage.totalTokens.toLocaleString()} tokens</span>
+                                        <span className="w-px h-2 bg-indigo-200" />
+                                        <span>${result.usage.cost.toFixed(4)}</span>
+                                    </span>
+                                )}
                             </h3>
-                            {selectedKitId === 'new' && result?.usage && (
-                                <div className="flex items-center gap-3 text-xs text-gray-500 bg-gray-50 px-3 py-1 rounded-full border">
-                                    <span>{result.usage.totalTokens.toLocaleString()} tokens</span>
-                                    <span className="w-px h-3 bg-gray-300" />
-                                    <span>${result.usage.cost.toFixed(4)} est. cost</span>
-                                </div>
-                            )}
+                            <p className="text-sm text-gray-500">
+                                {selectedKitId === 'new' ? 'Review the AI analysis below before saving.' : 'View and manage your brand assets.'}
+                            </p>
                         </div>
 
                         {selectedKitId === 'new' ? (
-                            <Button onClick={handleSaveAsKit} disabled={isSaving} variant="outline" className="border-indigo-200 text-indigo-700 hover:bg-indigo-50">
+                            <Button
+                                onClick={handleSaveAsKit}
+                                disabled={isSaving}
+                                variant="outline"
+                                className="glass-button bg-white/50 hover:bg-white/80 text-indigo-700 border-indigo-100 hover:border-indigo-200 shadow-sm"
+                            >
                                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                 Save as Brand Kit
                             </Button>
                         ) : (
-                            <Button onClick={handleUpdateKit} disabled={isSaving} variant="outline">
+                            <Button
+                                onClick={handleUpdateKit}
+                                disabled={isSaving}
+                                variant="outline"
+                                className="glass-button bg-white/50 hover:bg-white/80 text-gray-700 border-gray-200 hover:border-gray-300 shadow-sm"
+                            >
                                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                 Update Brand Kit
                             </Button>
@@ -235,10 +248,10 @@ export function BrandAnalyzerTool({ orgId, brandKits = [] }: BrandAnalyzerToolPr
                     </div>
 
                     <Tabs defaultValue="knowledge" className="w-full">
-                        <TabsList className="grid w-full grid-cols-3 mb-6">
-                            <TabsTrigger value="knowledge">Knowledge Base</TabsTrigger>
-                            <TabsTrigger value="visuals">Visuals</TabsTrigger>
-                            <TabsTrigger value="raw">Raw Data</TabsTrigger>
+                        <TabsList className="grid w-full grid-cols-3 mb-8 p-1 bg-gray-100/50 backdrop-blur-md rounded-2xl border border-white/20">
+                            <TabsTrigger value="knowledge" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 transition-all duration-300">Knowledge Base</TabsTrigger>
+                            <TabsTrigger value="visuals" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 transition-all duration-300">Visuals</TabsTrigger>
+                            <TabsTrigger value="raw" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 transition-all duration-300">Raw Data</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="knowledge">
@@ -316,10 +329,12 @@ export function BrandAnalyzerTool({ orgId, brandKits = [] }: BrandAnalyzerToolPr
                     </Tabs>
                 </div>
             ) : (
-                <div className="text-center py-20 bg-gray-50 rounded-xl border border-dashed">
-                    <Wand2 className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900">Ready to Analyze</h3>
-                    <p className="text-gray-500 mt-1 max-w-md mx-auto">
+                <div className="text-center py-24 bg-white/20 backdrop-blur-sm rounded-3xl border border-white/20 shadow-inner">
+                    <div className="w-20 h-20 mx-auto bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                        <Wand2 className="w-10 h-10 text-indigo-500" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Ready to Analyze</h3>
+                    <p className="text-gray-500 mt-1 max-w-md mx-auto text-lg font-light leading-relaxed">
                         Enter a website URL above to extract brand identity, or select an existing brand kit to view its details.
                     </p>
                 </div>

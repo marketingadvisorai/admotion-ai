@@ -16,9 +16,9 @@ export function BrandKitsManager({ brandKits, orgId }: BrandKitsManagerProps) {
     return (
         <Tabs defaultValue="kits" className="w-full">
             <div className="flex items-center justify-between mb-8">
-                <TabsList>
-                    <TabsTrigger value="kits">Brand Kits</TabsTrigger>
-                    <TabsTrigger value="analyzer">Brand Analyzer</TabsTrigger>
+                <TabsList className="p-1 bg-gray-100/50 backdrop-blur-md rounded-2xl border border-white/20 h-auto">
+                    <TabsTrigger value="kits" className="px-6 py-2 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 transition-all duration-300">Brand Kits</TabsTrigger>
+                    <TabsTrigger value="analyzer" className="px-6 py-2 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 transition-all duration-300">Brand Analyzer</TabsTrigger>
                 </TabsList>
                 <NewBrandKitDialog orgId={orgId} />
             </div>

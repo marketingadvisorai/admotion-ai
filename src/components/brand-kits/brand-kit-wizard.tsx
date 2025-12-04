@@ -110,11 +110,11 @@ export function BrandKitWizard({ orgId, existingKit, onComplete }: BrandKitWizar
         <FormProvider {...form}>
             <div className="w-full max-w-4xl mx-auto">
                 <Tabs value={step} onValueChange={(v: any) => setStep(v)} className="w-full">
-                    <TabsList className="grid w-full grid-cols-4 mb-8">
-                        <TabsTrigger value="discovery">1. Discovery</TabsTrigger>
-                        <TabsTrigger value="identity" disabled={!form.watch('business_name')}>2. Identity</TabsTrigger>
-                        <TabsTrigger value="analyzer" disabled={!form.watch('business_name')}>3. Brand Analyzer</TabsTrigger>
-                        <TabsTrigger value="preview" disabled={!form.watch('business_name')}>4. Preview & Save</TabsTrigger>
+                    <TabsList className="grid w-full grid-cols-4 mb-8 p-1 bg-gray-100/50 backdrop-blur-md rounded-2xl border border-white/20 h-auto">
+                        <TabsTrigger value="discovery" className="px-4 py-2 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 transition-all duration-300">1. Discovery</TabsTrigger>
+                        <TabsTrigger value="identity" disabled={!form.watch('business_name')} className="px-4 py-2 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 transition-all duration-300">2. Identity</TabsTrigger>
+                        <TabsTrigger value="analyzer" disabled={!form.watch('business_name')} className="px-4 py-2 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 transition-all duration-300">3. Brand Analyzer</TabsTrigger>
+                        <TabsTrigger value="preview" disabled={!form.watch('business_name')} className="px-4 py-2 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 transition-all duration-300">4. Preview & Save</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="discovery">

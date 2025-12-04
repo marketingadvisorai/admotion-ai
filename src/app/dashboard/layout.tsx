@@ -1,9 +1,7 @@
 import { getCurrentUser, getUserOrganizations } from '@/modules/auth/service';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 import { signOut } from '@/modules/auth/actions';
-import { Sidebar } from '@/components/dashboard/sidebar';
+import { DashboardShell } from '@/components/dashboard/shell';
 
 export default async function DashboardLayout({
     children,
@@ -22,14 +20,8 @@ export default async function DashboardLayout({
     }
 
     return (
-        <div className="flex min-h-screen bg-gray-100">
-            {/* Sidebar */}
-            <Sidebar user={user} orgs={orgs} signOutAction={signOut} />
-
-            {/* Main Content */}
-            <main className="flex-1 overflow-y-auto">
-                {children}
-            </main>
-        </div>
+        <DashboardShell user={user} orgs={orgs} signOutAction={signOut}>
+            {children}
+        </DashboardShell>
     );
 }

@@ -38,42 +38,38 @@ export function BrandKnowledgeBase({ brandKit }: BrandKnowledgeBaseProps) {
 
             {/* Strategy Grid */}
             <div className="grid gap-6 md:grid-cols-2">
-                <Card className="bg-gradient-to-br from-indigo-50 to-white border-indigo-100">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-indigo-700">
-                            <Lightbulb className="h-5 w-5" />
-                            Vision & Mission
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
+                <div className="glass-panel rounded-3xl p-6 bg-gradient-to-br from-indigo-50/50 to-white/30 border-indigo-100/50">
+                    <div className="flex items-center gap-2 text-indigo-700 mb-4 font-semibold text-lg">
+                        <Lightbulb className="h-5 w-5" />
+                        Vision & Mission
+                    </div>
+                    <div className="space-y-6">
                         <div>
-                            <h4 className="font-semibold text-sm text-indigo-900 uppercase tracking-wider mb-1">Vision</h4>
-                            <p className="text-gray-700 italic">"{strategy.vision || 'Not defined'}"</p>
+                            <h4 className="font-semibold text-xs text-indigo-900/70 uppercase tracking-wider mb-2">Vision</h4>
+                            <p className="text-gray-700 italic font-light leading-relaxed">"{strategy.vision || 'Not defined'}"</p>
                         </div>
                         <div>
-                            <h4 className="font-semibold text-sm text-indigo-900 uppercase tracking-wider mb-1">Mission</h4>
-                            <p className="text-gray-700">"{strategy.mission || 'Not defined'}"</p>
+                            <h4 className="font-semibold text-xs text-indigo-900/70 uppercase tracking-wider mb-2">Mission</h4>
+                            <p className="text-gray-700 font-light leading-relaxed">"{strategy.mission || 'Not defined'}"</p>
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
 
-                <Card className="bg-gradient-to-br from-purple-50 to-white border-purple-100">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-purple-700">
-                            <Target className="h-5 w-5" />
-                            Target Audience
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-gray-700">{strategy.target_audience || 'Not defined'}</p>
+                <div className="glass-panel rounded-3xl p-6 bg-gradient-to-br from-purple-50/50 to-white/30 border-purple-100/50">
+                    <div className="flex items-center gap-2 text-purple-700 mb-4 font-semibold text-lg">
+                        <Target className="h-5 w-5" />
+                        Target Audience
+                    </div>
+                    <div className="space-y-4">
+                        <p className="text-gray-700 font-light leading-relaxed">{strategy.target_audience || 'Not defined'}</p>
                         <div className="mt-4">
-                            <h4 className="font-semibold text-sm text-purple-900 uppercase tracking-wider mb-2">Brand Voice</h4>
-                            <Badge variant="secondary" className="bg-purple-100 text-purple-700 hover:bg-purple-200">
+                            <h4 className="font-semibold text-xs text-purple-900/70 uppercase tracking-wider mb-2">Brand Voice</h4>
+                            <Badge variant="secondary" className="bg-purple-100/50 text-purple-700 hover:bg-purple-200/50 backdrop-blur-sm border border-purple-200/50">
                                 {strategy.brand_voice || 'Not defined'}
                             </Badge>
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
             </div>
 
             {/* Core Values & Differentiators */}
@@ -125,44 +121,50 @@ export function BrandKnowledgeBase({ brandKit }: BrandKnowledgeBaseProps) {
                 </h3>
 
                 <div className="grid gap-6 md:grid-cols-3">
-                    <Card className="bg-red-50 border-red-100">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-base text-red-900">Pain Points</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
-                                {strategy.pain_points?.map((point: string, i: number) => (
-                                    <li key={i}>{point}</li>
-                                )) || <li className="text-gray-400 italic">No pain points identified</li>}
-                            </ul>
-                        </CardContent>
-                    </Card>
+                    <div className="glass-panel rounded-3xl p-6 bg-red-50/30 border-red-100/50 hover:shadow-lg transition-shadow">
+                        <h4 className="text-base font-semibold text-red-900 mb-4 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-red-400"></span>
+                            Pain Points
+                        </h4>
+                        <ul className="space-y-2 text-sm text-gray-700">
+                            {strategy.pain_points?.map((point: string, i: number) => (
+                                <li key={i} className="flex items-start gap-2">
+                                    <span className="text-red-400 mt-1">•</span>
+                                    <span className="font-light">{point}</span>
+                                </li>
+                            )) || <li className="text-gray-400 italic">No pain points identified</li>}
+                        </ul>
+                    </div>
 
-                    <Card className="bg-green-50 border-green-100">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-base text-green-900">Key Benefits</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
-                                {strategy.key_benefits?.map((benefit: string, i: number) => (
-                                    <li key={i}>{benefit}</li>
-                                )) || <li className="text-gray-400 italic">No benefits identified</li>}
-                            </ul>
-                        </CardContent>
-                    </Card>
+                    <div className="glass-panel rounded-3xl p-6 bg-green-50/30 border-green-100/50 hover:shadow-lg transition-shadow">
+                        <h4 className="text-base font-semibold text-green-900 mb-4 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-green-400"></span>
+                            Key Benefits
+                        </h4>
+                        <ul className="space-y-2 text-sm text-gray-700">
+                            {strategy.key_benefits?.map((benefit: string, i: number) => (
+                                <li key={i} className="flex items-start gap-2">
+                                    <span className="text-green-400 mt-1">•</span>
+                                    <span className="font-light">{benefit}</span>
+                                </li>
+                            )) || <li className="text-gray-400 italic">No benefits identified</li>}
+                        </ul>
+                    </div>
 
-                    <Card className="bg-amber-50 border-amber-100">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-base text-amber-900">Marketing Angles (Hooks)</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
-                                {strategy.marketing_angles?.map((angle: string, i: number) => (
-                                    <li key={i}>{angle}</li>
-                                )) || <li className="text-gray-400 italic">No hooks identified</li>}
-                            </ul>
-                        </CardContent>
-                    </Card>
+                    <div className="glass-panel rounded-3xl p-6 bg-amber-50/30 border-amber-100/50 hover:shadow-lg transition-shadow">
+                        <h4 className="text-base font-semibold text-amber-900 mb-4 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                            Marketing Angles
+                        </h4>
+                        <ul className="space-y-2 text-sm text-gray-700">
+                            {strategy.marketing_angles?.map((angle: string, i: number) => (
+                                <li key={i} className="flex items-start gap-2">
+                                    <span className="text-amber-400 mt-1">•</span>
+                                    <span className="font-light">{angle}</span>
+                                </li>
+                            )) || <li className="text-gray-400 italic">No hooks identified</li>}
+                        </ul>
+                    </div>
                 </div>
             </div>
 

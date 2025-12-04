@@ -3,9 +3,9 @@ import { createClient } from '@/lib/db/server';
 
 export async function GET(
     _request: Request,
-    { params }: { params: { id: string } },
+    { params }: { params: Promise<{ id: string }> },
 ) {
-    const campaignId = params.id;
+    const { id: campaignId } = await params;
     const supabase = await createClient();
 
     const { data: campaign, error: campaignError } = await supabase
@@ -60,8 +60,7 @@ export async function GET(
 
     if (primaryColor || secondaryColor) {
         baseParts.push(
-            `Apply brand colors (primary ${primaryColor}${
-                secondaryColor ? `, secondary ${secondaryColor}` : ''
+            `Apply brand colors (primary ${primaryColor}${secondaryColor ? `, secondary ${secondaryColor}` : ''
             }).`,
         );
     }

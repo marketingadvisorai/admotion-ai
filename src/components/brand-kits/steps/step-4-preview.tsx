@@ -20,59 +20,66 @@ export function Step4Preview({ onBack, onSave, isSaving }: Step4PreviewProps) {
     const primaryColor = colors.find((c: any) => c.type === 'primary')?.value || '#000000';
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Preview Brand Kit</CardTitle>
-                <CardDescription>
-                    Review your brand assets before saving.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="border rounded-lg p-8 space-y-8 bg-white/50 backdrop-blur-sm">
-                    <div className="text-center space-y-4">
-                        <h2
-                            className="text-4xl font-bold"
-                            style={{
-                                fontFamily: fonts.heading,
-                                color: primaryColor
-                            }}
-                        >
-                            {businessName}
-                        </h2>
-                        <p
-                            className="text-lg max-w-2xl mx-auto text-muted-foreground"
-                            style={{
-                                fontFamily: fonts.body,
-                            }}
-                        >
-                            {description}
-                        </p>
-                    </div>
+        <div className="glass-panel rounded-3xl overflow-hidden">
+            <div className="p-6 border-b border-white/20 bg-white/40 backdrop-blur-md">
+                <h3 className="text-xl font-bold text-gray-900">Preview Brand Kit</h3>
+                <p className="text-sm text-gray-500 mt-1">Review your brand assets before saving.</p>
+            </div>
 
-                    <div className="flex justify-center gap-6 flex-wrap">
-                        {colors.map((color: any, i: number) => (
-                            <div key={i} className="text-center group">
-                                <div
-                                    className="h-16 w-16 rounded-full shadow-lg mx-auto mb-2 ring-2 ring-offset-2 ring-transparent group-hover:ring-gray-200 transition-all"
-                                    style={{ backgroundColor: color.value }}
-                                />
-                                <span className="text-xs font-medium text-muted-foreground">{color.name}</span>
-                            </div>
-                        ))}
+            <div className="p-8">
+                <div className="relative overflow-hidden rounded-2xl border border-white/20 bg-white/30 backdrop-blur-md shadow-inner">
+                    {/* Ambient background for preview */}
+                    <div className="absolute inset-0 opacity-10" style={{
+                        background: `radial-gradient(circle at 50% 50%, ${primaryColor}, transparent 70%)`
+                    }} />
+
+                    <div className="relative p-12 space-y-12">
+                        <div className="text-center space-y-6">
+                            <h2
+                                className="text-5xl font-bold tracking-tight drop-shadow-sm"
+                                style={{
+                                    fontFamily: fonts.heading,
+                                    color: primaryColor
+                                }}
+                            >
+                                {businessName}
+                            </h2>
+                            <p
+                                className="text-xl max-w-2xl mx-auto text-gray-700 leading-relaxed"
+                                style={{
+                                    fontFamily: fonts.body,
+                                }}
+                            >
+                                {description}
+                            </p>
+                        </div>
+
+                        <div className="flex justify-center gap-8 flex-wrap">
+                            {colors.map((color: any, i: number) => (
+                                <div key={i} className="text-center group">
+                                    <div
+                                        className="h-20 w-20 rounded-2xl shadow-lg mx-auto mb-3 ring-4 ring-white/50 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
+                                        style={{ backgroundColor: color.value }}
+                                    />
+                                    <span className="text-xs font-bold uppercase tracking-wider text-gray-500 bg-white/50 px-2 py-1 rounded-full backdrop-blur-sm">{color.name}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-                <Button variant="outline" onClick={onBack}>Back</Button>
+            </div>
+
+            <div className="p-6 border-t border-white/20 bg-white/40 backdrop-blur-md flex justify-between">
+                <Button variant="outline" onClick={onBack} className="glass-button bg-white/50 hover:bg-white/80 text-gray-700 border-gray-200 hover:border-gray-300 shadow-sm">Back</Button>
                 <Button
                     onClick={onSave}
                     disabled={isSaving}
-                    className="bg-green-600 hover:bg-green-700 text-white"
+                    className="glass-button bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white shadow-lg shadow-green-500/20 border-0 px-8"
                 >
                     {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Save Brand Kit
                 </Button>
-            </CardFooter>
-        </Card>
+            </div>
+        </div>
     );
 }

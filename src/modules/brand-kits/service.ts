@@ -31,7 +31,7 @@ export async function createBrandKit(input: CreateBrandKitInput) {
     const { data, error } = await supabase
         .from('brand_kits')
         .insert({
-            org_id: input.orgId,
+            org_id: input.org_id,
             name: input.name,
             logo_url: input.logo_url,
             colors: input.colors,

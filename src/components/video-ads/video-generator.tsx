@@ -5,16 +5,22 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowUpRight, AudioLines, Loader2 } from 'lucide-react';
 import { AspectDropdown, AspectOption } from '@/components/ads/aspect-dropdown';
-import { BrandPicker, BrandMode, AnalyzedBrandProfile } from '@/components/ads/brand-picker';
+import { AnalyzedBrandProfile, BrandPicker } from '@/components/ads/brand-picker';
 import { ModelDropdown } from '@/components/ads/model-dropdown';
-import { StyleDropdown } from '@/components/ads/style-dropdown';
 import { QuickPrompts } from '@/components/ads/quick-prompts';
-import { GeneratedGrid, GeneratedImage } from './generated-grid';
-import { ImageStyle } from './style-selector';
+import { TypeSelect } from '@/components/ads/type-select';
+import { ResultGridVideo } from '@/components/ads/result-grid-video';
 import { BrandKit } from '@/modules/brand-kits/types';
 import { LlmProfile } from '@/modules/llm/types';
+import { AspectRatioVideo, GeneratedVideo } from './types';
 
-type AspectRatio = '3:2' | '1:1' | '2:3';
+interface VideoGeneratorProps {
+  displayName: string;
+  brandKits: BrandKit[];
+  llmProfiles: LlmProfile[];
+  providers: { id: string; name: string }[];
+  orgId: string;
+}
 
 interface BrandIdentityLite {
   business_name?: string;
@@ -24,89 +30,72 @@ interface BrandIdentityLite {
   strategy?: { brand_voice?: string; target_audience?: string; values?: string[] };
 }
 
-interface ImageGeneratorProps {
-  displayName: string;
-  brandKits: BrandKit[];
-  llmProfiles: LlmProfile[];
-  orgId: string;
-}
-
-const aspectOptions: AspectOption<AspectRatio>[] = [
-  { value: '3:2', label: '3:2', hint: 'Landscape', visualWidth: 'w-9' },
+const aspectOptions: AspectOption<AspectRatioVideo>[] = [
+  { value: '16:9', label: '16:9', hint: 'Wide', visualWidth: 'w-10' },
   { value: '1:1', label: '1:1', hint: 'Square', visualWidth: 'w-7' },
-  { value: '2:3', label: '2:3', hint: 'Portrait', visualWidth: 'w-6' },
-];
-
-const styleOptions: { id: ImageStyle; label: string; description: string }[] = [
-  { id: 'auto', label: 'Auto', description: 'Let the model pick the vibe' },
-  { id: 'clean_modern', label: 'Clean & Modern', description: 'Minimal shapes, crisp gradients' },
-  { id: 'bold', label: 'Bold', description: 'High contrast, loud colors' },
-  { id: 'minimalist', label: 'Minimalist', description: 'Soft neutrals, calm spacing' },
-  { id: 'luxury', label: 'Luxury', description: 'Deep tones with sheen' },
-  { id: 'playful', label: 'Playful', description: 'Rounded, colorful, energetic' },
-  { id: 'natural', label: 'Natural', description: 'Organic textures, greens' },
+  { value: '9:16', label: '9:16', hint: 'Vertical', visualWidth: 'w-5' },
 ];
 
 const promptExamples = [
   {
-    id: 'sneaker',
-    title: 'Timeless Classics',
-    prompt: 'Create a vibrant sneaker ad featuring a confident model and a modern gradient backdrop highlighting comfort and movement.',
-    image: 'https://images.unsplash.com/photo-1542293787938-4d273c1130f6?auto=format&fit=crop&w=600&q=80',
-    aspect: '1:1' as AspectRatio,
-    style: 'bold' as ImageStyle,
+    id: 'launch',
+    title: 'Product Launch',
+    prompt: 'Create a 10s launch video with upbeat pacing, fast cuts, and overlay text for a new smart bottle.',
+    image: 'https://images.unsplash.com/photo-1478720568477-152d9b164e26?auto=format&fit=crop&w=600&q=80',
+    aspect: '9:16' as AspectRatioVideo,
+    duration: 10,
   },
   {
     id: 'food',
-    title: 'Weekend Deals',
-    prompt: 'Design a cozy food delivery ad with warm lighting, rustic props, and a hero bowl of ramen beside fresh ingredients.',
+    title: 'Food Delivery',
+    prompt: 'A cozy 8s food delivery ad with warm lighting, plated dishes, and a friendly CTA overlay.',
     image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=600&q=80',
-    aspect: '3:2' as AspectRatio,
-    style: 'clean_modern' as ImageStyle,
+    aspect: '16:9' as AspectRatioVideo,
+    duration: 8,
   },
   {
-    id: 'grocery',
-    title: 'Fresh Greens',
-    prompt: 'Craft a grocery delivery ad with crisp veggies, soft gradients, and overlayed pricing badges that feel approachable.',
-    image: 'https://images.unsplash.com/photo-1502741338009-cac2772e18bc?auto=format&fit=crop&w=600&q=80',
-    aspect: '2:3' as AspectRatio,
-    style: 'natural' as ImageStyle,
+    id: 'fitness',
+    title: 'Fitness Teaser',
+    prompt: 'Energetic 12s fitness promo with dynamic transitions, on-screen timers, and motivational copy.',
+    image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=600&q=80',
+    aspect: '9:16' as AspectRatioVideo,
+    duration: 12,
   },
   {
-    id: 'hotel',
-    title: 'Escape Campaign',
-    prompt: 'Generate a luxury travel ad featuring a serene resort pool at golden hour, with refined typography and subtle glow.',
+    id: 'luxury',
+    title: 'Luxury Stay',
+    prompt: 'A 12s luxury hotel reel at golden hour, slow pans, elegant typography, subtle shimmer accents.',
     image: 'https://images.unsplash.com/photo-1505761671935-60b3a7427bad?auto=format&fit=crop&w=600&q=80',
-    aspect: '3:2' as AspectRatio,
-    style: 'luxury' as ImageStyle,
+    aspect: '16:9' as AspectRatioVideo,
+    duration: 12,
   },
   {
-    id: 'poster',
-    title: 'Playful Poster',
-    prompt: 'Design a playful poster with pastel gradients, rounded shapes, and a friendly mascot waving beside the CTA.',
+    id: 'retail',
+    title: 'Retail Sale',
+    prompt: 'Snappy 6s retail sale teaser with bold pricing frames, animated stickers, and a loud CTA.',
     image: 'https://images.unsplash.com/photo-1523475472560-d2df97ec485c?auto=format&fit=crop&w=600&q=80',
-    aspect: '1:1' as AspectRatio,
-    style: 'playful' as ImageStyle,
+    aspect: '1:1' as AspectRatioVideo,
+    duration: 6,
   },
 ];
 
-export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: ImageGeneratorProps) {
+export function VideoGenerator({ displayName, brandKits, llmProfiles, providers, orgId }: VideoGeneratorProps) {
   const [brandKitOptions, setBrandKitOptions] = useState<BrandKit[]>(brandKits);
   const [analyzerProfiles, setAnalyzerProfiles] = useState<AnalyzedBrandProfile[]>([]);
   const [prompt, setPrompt] = useState(
-    'Generate a creative, eye-catching ad concept for a random product or service. Include a catchy headline, a short tagline, and a brief description that grabs attention.'
+    'Create a 10s product promo with upbeat pacing, clear headline, CTA overlay, and brand-safe color grading.'
   );
-  const [selectedAspect, setSelectedAspect] = useState<AspectRatio>('1:1');
-  const [selectedStyle, setSelectedStyle] = useState<ImageStyle>('clean_modern');
+  const [selectedAspect, setSelectedAspect] = useState<AspectRatioVideo>('16:9');
+  const [duration, setDuration] = useState<number>(10);
+  const [providerId, setProviderId] = useState<string>(providers[0]?.id || 'runway');
   const [selectedLlmProfile, setSelectedLlmProfile] = useState<string>('chatgpt');
   const [selectedBrandKitId, setSelectedBrandKitId] = useState<string>(brandKitOptions[0]?.id || '');
   const [selectedAnalyzerId, setSelectedAnalyzerId] = useState<string>('');
-  const [brandMode, setBrandMode] = useState<BrandMode>(brandKitOptions.length ? 'kit' : 'none');
-  const [brandUrl, setBrandUrl] = useState('');
   const [brandAnalysis, setBrandAnalysis] = useState<BrandIdentityLite | null>(null);
   const [isAnalyzingBrand, setIsAnalyzingBrand] = useState(false);
+  const [brandUrl, setBrandUrl] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
+  const [generatedVideos, setGeneratedVideos] = useState<GeneratedVideo[]>([]);
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
 
   const selectedBrandKit = useMemo(
@@ -117,7 +106,7 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
     () => analyzerProfiles.find((item) => item.id === selectedAnalyzerId),
     [analyzerProfiles, selectedAnalyzerId]
   );
-  const activeBrand = brandMode === 'kit' ? selectedBrandKit : brandMode === 'analyze' ? selectedAnalyzer?.analysis || brandAnalysis : null;
+  const activeBrand = selectedAnalyzer?.analysis || selectedBrandKit || brandAnalysis || null;
 
   const buildPrompt = () => {
     const colors = activeBrand?.colors?.map((c) => c.value).filter(Boolean).slice(0, 3).join(', ');
@@ -126,7 +115,7 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
       activeBrand?.strategy?.target_audience ||
       activeBrand?.strategy?.values?.join(', ');
     const brandLine = activeBrand ? `Brand tone: ${voice || 'clean'}. Colors: ${colors || 'balanced'}.` : '';
-    return [`Aspect: ${selectedAspect}. Style: ${selectedStyle.replace('_', ' ')}.`, brandLine, prompt].filter(Boolean).join(' ');
+    return [`Video ${duration}s ${selectedAspect} via ${providerId}.`, brandLine, prompt].filter(Boolean).join(' ');
   };
 
   const handleAnalyzeBrand = async (url: string) => {
@@ -156,7 +145,6 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
         setAnalyzerProfiles((prev) => [profile, ...prev.filter((p) => p.id !== profile.id)]);
         setSelectedAnalyzerId(profile.id);
         setBrandAnalysis(analysis);
-        setBrandMode('analyze');
         setSelectedBrandKitId(kit.id);
       }
     } catch (error) {
@@ -171,18 +159,20 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
     setPrompt(nextPrompt);
     if (!nextPrompt.trim()) return;
     setIsGenerating(true);
-    await new Promise((resolve) => setTimeout(resolve, 1400));
-    const newImages: GeneratedImage[] = Array.from({ length: 3 }).map((_, i) => {
-      const fallback = promptExamples[(i + generatedImages.length) % promptExamples.length];
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const newVideos: GeneratedVideo[] = Array.from({ length: 2 }).map((_, i) => {
+      const sample = promptExamples[(i + generatedVideos.length) % promptExamples.length];
       return {
         id: `${Date.now()}-${i}`,
-        url: fallback.image,
+        cover: sample.image,
         prompt: nextPrompt,
-        style: selectedStyle,
+        provider: providerId,
+        duration,
+        aspect: selectedAspect,
         createdAt: new Date(),
       };
     });
-    setGeneratedImages((prev) => [...newImages, ...prev]);
+    setGeneratedVideos((prev) => [...newVideos, ...prev]);
     setIsGenerating(false);
   };
 
@@ -191,7 +181,7 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
     if (!example) return;
     setPrompt(example.prompt);
     setSelectedAspect(example.aspect);
-    setSelectedStyle(example.style);
+    setDuration(example.duration);
   };
 
   const quickPromptCards = promptExamples.map((item) => ({
@@ -199,7 +189,7 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
     title: item.title,
     prompt: item.prompt,
     image: item.image,
-    meta: `${item.aspect} · ${item.style.replace('_', ' ')}`,
+    meta: `${item.aspect} · ${item.duration}s`,
   }));
 
   return (
@@ -221,7 +211,7 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
         <div className="text-center space-y-3">
           <p className="text-sm text-slate-500">Good Afternoon, {displayName}</p>
           <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-slate-900">
-            What <span className="text-purple-600">Ads</span> would you like today?
+            What <span className="text-purple-600">Video Ads</span> would you like today?
           </h1>
         </div>
 
@@ -234,7 +224,7 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   rows={3}
-                  placeholder="Ask for an ad..."
+                  placeholder="Ask for a video ad..."
                   className="min-h-[140px] resize-none rounded-[26px] border-0 bg-transparent px-5 pt-5 pb-24 text-base md:text-lg leading-relaxed text-slate-900 placeholder:text-slate-500 focus-visible:border-0 focus-visible:ring-0"
                 />
 
@@ -250,7 +240,6 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
                       analysis={activeBrand}
                       onSelectKit={(id) => {
                         setSelectedBrandKitId(id);
-                        setBrandMode('kit');
                         setSelectedAnalyzerId('');
                         setBrandAnalysis(null);
                       }}
@@ -258,14 +247,12 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
                         const profile = analyzerProfiles.find((item) => item.id === id);
                         if (!profile) return;
                         setSelectedAnalyzerId(id);
-                        setBrandMode('analyze');
                         setBrandAnalysis(profile.analysis);
                         if (profile.kitId) setSelectedBrandKitId(profile.kitId);
                       }}
                       onAnalyze={handleAnalyzeBrand}
                       onUrlChange={setBrandUrl}
                       onClear={() => {
-                        setBrandMode('none');
                         setSelectedBrandKitId('');
                         setSelectedAnalyzerId('');
                         setBrandAnalysis(null);
@@ -275,9 +262,9 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
                         setReferenceImages((prev) => [url, ...prev].slice(0, 4));
                       }}
                     />
-
                     <AspectDropdown value={selectedAspect} options={aspectOptions} onChange={setSelectedAspect} />
-                    <StyleDropdown value={selectedStyle} options={styleOptions} onChange={setSelectedStyle} />
+                    <TypeSelect value={duration} options={[6, 8, 10, 12, 15, 20].map((v) => ({ value: v, label: `${v} seconds` }))} onChange={setDuration} label="Duration" suffix="s" />
+                    <TypeSelect value={providerId} options={providers.map((p) => ({ value: p.id, label: `${p.name} (${p.id})` }))} onChange={setProviderId} label="Provider" />
                     <ModelDropdown profiles={llmProfiles} value={selectedLlmProfile} onChange={setSelectedLlmProfile} />
                   </div>
 
@@ -287,7 +274,7 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
                       className="h-12 w-12 rounded-[18px] bg-[#3178ff] text-white shadow-lg shadow-blue-500/20 hover:bg-[#2a6ae0]"
                       onClick={handleGenerate}
                       disabled={!prompt.trim() || isGenerating}
-                      aria-label="Generate ad"
+                      aria-label="Generate video"
                     >
                       {isGenerating ? <Loader2 className="size-5 animate-spin" /> : <ArrowUpRight className="size-5" />}
                     </Button>
@@ -324,9 +311,9 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
               <h3 className="text-lg font-semibold text-slate-900">Recent generations</h3>
               <p className="text-sm text-slate-500">Draft results appear here after you generate.</p>
             </div>
-            <span className="text-sm text-slate-500">{generatedImages.length} created</span>
+            <span className="text-sm text-slate-500">{generatedVideos.length} created</span>
           </div>
-          <GeneratedGrid images={generatedImages} isLoading={isGenerating} />
+          <ResultGridVideo videos={generatedVideos} />
         </section>
       </div>
     </div>

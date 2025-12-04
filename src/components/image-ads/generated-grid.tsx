@@ -1,7 +1,7 @@
 import React from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Download, Maximize2, MoreHorizontal } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 export interface GeneratedImage {
     id: string;
@@ -46,9 +46,15 @@ export function GeneratedGrid({ images, isLoading }: GeneratedGridProps) {
             {images.map((image) => (
                 <div key={image.id} className="group relative aspect-square rounded-xl overflow-hidden border bg-card shadow-sm hover:shadow-md transition-all duration-300">
                     {/* Image Placeholder or Actual Image */}
-                    <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                    <div className="relative w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
                         {image.url ? (
-                            <img src={image.url} alt={image.prompt} className="w-full h-full object-cover" />
+                            <Image
+                                src={image.url}
+                                alt={image.prompt}
+                                fill
+                                className="object-cover"
+                                sizes="(min-width: 1024px) 300px, 50vw"
+                            />
                         ) : (
                             <span className="text-xs text-muted-foreground p-4 text-center">{image.prompt}</span>
                         )}

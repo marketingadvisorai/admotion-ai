@@ -29,6 +29,61 @@ export async function analyzeBrandAction(url: string, orgId?: string) {
     }
 }
 
+export async function createBrandKitFromUrlAction(url: string, orgId: string) {
+    if (!url || !orgId) {
+        return { success: false, error: 'Missing url or orgId' };
+    }
+
+    try {
+        const analysisResult = await analyzeBrandAction(url, orgId);
+        if (!analysisResult.success || !analysisResult.data) {
+            return { success: false, error: analysisResult.error || 'Failed to analyze brand' };
+        }
+
+        const identity = analysisResult.data as BrandIdentity;
+        const supabase = await createClient();
+
+        const logo_url = await uploadLogoToStorage(identity.logo_url, orgId);
+        const fallbackName = identity.business_name || (() => {
+            try {
+                return new URL(url).hostname;
+            } catch {
+                return url;
+            }
+        })();
+
+        const { data: brandKit, error } = await supabase
+            .from('brand_kits')
+            .insert({
+                org_id: orgId,
+                name: fallbackName,
+                website_url: url,
+                business_name: identity.business_name || fallbackName,
+                description: identity.description || '',
+                locations: identity.locations || [],
+                colors: identity.colors || [],
+                fonts: identity.fonts || { heading: 'Inter', body: 'Inter' },
+                social_links: identity.social_links || {},
+                logo_url,
+                offerings: identity.offerings || [],
+                strategy: identity.strategy || {},
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Database error creating brand kit from URL:', error);
+            throw error;
+        }
+
+        revalidatePath(`/dashboard/${orgId}/brand-kits`);
+        return { success: true, data: { kit: brandKit, analysis: identity } };
+    } catch (error: any) {
+        console.error('createBrandKitFromUrlAction failed:', error);
+        return { success: false, error: error.message || 'Unable to create brand kit from URL' };
+    }
+}
+
 async function uploadLogoToStorage(logoUrl: string, orgId: string): Promise<string> {
     if (!logoUrl) return '';
 
