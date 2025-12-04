@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowUpRight, AudioLines, Loader2 } from 'lucide-react';
+import { ArrowUpRight, AudioLines, Loader2, AlertCircle } from 'lucide-react';
 import { BrandPicker, BrandMode, AnalyzedBrandProfile } from '@/components/ads/brand-picker';
 import { ModelDropdown } from '@/components/ads/model-dropdown';
 import { QuickPrompts } from '@/components/ads/quick-prompts';
 import { GeneratedGrid, GeneratedImage } from './generated-grid';
 import { BrandKit } from '@/modules/brand-kits/types';
 import { LlmProfile } from '@/modules/llm/types';
+import { ImageGeneration, ImageProvider, ImageAspectRatio } from '@/modules/image-generation/types';
 
 type AspectRatio = '3:2' | '1:1' | '2:3';
 
@@ -84,7 +85,36 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<ImageProvider>('openai');
+  const [isLoadingImages, setIsLoadingImages] = useState(true);
 
+  // Load existing images on mount
+  const loadExistingImages = useCallback(async () => {
+    try {
+      setIsLoadingImages(true);
+      const res = await fetch(`/api/images?orgId=${orgId}`);
+      const data = await res.json();
+      if (data.success && data.images) {
+        const mapped: GeneratedImage[] = data.images.map((img: ImageGeneration) => ({
+          id: img.id,
+          url: img.result_url || '',
+          prompt: img.prompt_used || '',
+          style: img.style,
+          createdAt: new Date(img.created_at),
+        }));
+        setGeneratedImages(mapped);
+      }
+    } catch (err) {
+      console.error('Failed to load images:', err);
+    } finally {
+      setIsLoadingImages(false);
+    }
+  }, [orgId]);
+
+  useEffect(() => {
+    loadExistingImages();
+  }, [loadExistingImages]);
 
   const selectedBrandKit = useMemo(
     () => brandKitOptions.find((kit) => kit.id === selectedBrandKitId),
@@ -145,22 +175,63 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
 
   const handleGenerate = async () => {
     const nextPrompt = buildPrompt();
-    setPrompt(nextPrompt);
     if (!nextPrompt.trim()) return;
+    
+    setError(null);
     setIsGenerating(true);
-    await new Promise((resolve) => setTimeout(resolve, 1400));
-    const newImages: GeneratedImage[] = Array.from({ length: 3 }).map((_, i) => {
-      const fallback = promptExamples[(i + generatedImages.length) % promptExamples.length];
-      return {
-        id: `${Date.now()}-${i}`,
-        url: fallback.image,
-        prompt: nextPrompt,
-        style: undefined,
-        createdAt: new Date(),
+    
+    try {
+      // Build brand context from active brand
+      const brandContext = activeBrand ? {
+        businessName: activeBrand.business_name,
+        colors: activeBrand.colors?.map((c) => c.value).filter(Boolean),
+        brandVoice: activeBrand.strategy?.brand_voice,
+        targetAudience: activeBrand.strategy?.target_audience,
+      } : undefined;
+
+      // Map aspect ratio format
+      const aspectRatioMap: Record<AspectRatio, ImageAspectRatio> = {
+        '1:1': '1:1',
+        '3:2': '3:2',
+        '2:3': '2:3',
       };
-    });
-    setGeneratedImages((prev) => [...newImages, ...prev]);
-    setIsGenerating(false);
+
+      const res = await fetch('/api/images/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orgId,
+          prompt: nextPrompt,
+          provider: selectedProvider,
+          aspectRatio: aspectRatioMap[selectedAspect],
+          numberOfImages: 1,
+          brandContext,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to generate image');
+      }
+
+      // Map the response to GeneratedImage format
+      const newImages: GeneratedImage[] = data.images.map((img: ImageGeneration) => ({
+        id: img.id,
+        url: img.result_url || '',
+        prompt: img.prompt_used || nextPrompt,
+        style: img.style,
+        createdAt: new Date(img.created_at),
+      }));
+
+      setGeneratedImages((prev) => [...newImages, ...prev]);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to generate image';
+      setError(message);
+      console.error('Image generation failed:', err);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleUseExample = (id: string) => {
@@ -254,6 +325,30 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
                     />
 
                     <ModelDropdown profiles={llmProfiles} value={selectedLlmProfile} onChange={setSelectedLlmProfile} />
+
+                    {/* Provider Selector */}
+                    <div className="flex items-center gap-1 rounded-full bg-white/80 border border-white/60 p-1">
+                      <button
+                        onClick={() => setSelectedProvider('openai')}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                          selectedProvider === 'openai'
+                            ? 'bg-slate-900 text-white'
+                            : 'text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        DALL-E 3
+                      </button>
+                      <button
+                        onClick={() => setSelectedProvider('gemini')}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                          selectedProvider === 'gemini'
+                            ? 'bg-slate-900 text-white'
+                            : 'text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        Gemini
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -293,6 +388,23 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
           <QuickPrompts items={quickPromptCards} onSelect={handleUseExample} />
         </section>
 
+        {/* Error Display */}
+        {error && (
+          <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <div>
+              <p className="font-medium">Generation Failed</p>
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+            <button 
+              onClick={() => setError(null)} 
+              className="ml-auto text-red-500 hover:text-red-700"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -301,7 +413,7 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
             </div>
             <span className="text-sm text-slate-500">{generatedImages.length} created</span>
           </div>
-          <GeneratedGrid images={generatedImages} isLoading={isGenerating} />
+          <GeneratedGrid images={generatedImages} isLoading={isGenerating || isLoadingImages} />
         </section>
       </div>
     </div>

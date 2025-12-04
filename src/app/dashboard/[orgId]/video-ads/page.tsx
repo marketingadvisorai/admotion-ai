@@ -10,8 +10,8 @@ export const metadata: Metadata = {
     description: 'Generate AI-powered video ads with your brand kits.',
 };
 
-export default async function VideoAdsPage({ params }: { params: { orgId: string } }) {
-    const { orgId } = params;
+export default async function VideoAdsPage({ params }: { params: Promise<{ orgId: string }> }) {
+    const { orgId } = await params;
     const user = await getCurrentUser();
     const profile = user ? await getUserProfile(user.id) : null;
     const displayName =

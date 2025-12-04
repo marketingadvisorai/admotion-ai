@@ -1,27 +1,39 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createImageGeneration } from './service';
+import { generateImages } from './service';
+import { ImageAspectRatio, ImageProvider } from './types';
 
 export async function generateImageAction(formData: FormData) {
     const orgId = formData.get('orgId') as string;
-    const campaignId = formData.get('campaignId') as string;
+    const campaignId = formData.get('campaignId') as string | null;
     const prompt = formData.get('prompt') as string;
-    const size = (formData.get('size') as string | null) || '1024x1024';
-    const modelSlug = (formData.get('modelSlug') as string | null) || 'gpt-5.1';
+    const aspectRatio = (formData.get('aspectRatio') as ImageAspectRatio | null) || '1:1';
+    const provider = (formData.get('provider') as ImageProvider | null) || 'openai';
+    const numberOfImages = parseInt(formData.get('numberOfImages') as string) || 1;
 
     try {
-        await createImageGeneration({
+        const result = await generateImages({
             orgId,
-            campaignId,
+            campaignId: campaignId || undefined,
             prompt,
-            size: size as any,
-            modelSlug,
+            aspectRatio,
+            provider,
+            numberOfImages,
         });
 
-        revalidatePath(`/dashboard/${orgId}/campaigns/${campaignId}`);
-        return { success: true };
-    } catch (error: any) {
-        return { error: error.message };
+        if (!result.success) {
+            return { error: result.error };
+        }
+
+        if (campaignId) {
+            revalidatePath(`/dashboard/${orgId}/campaigns/${campaignId}`);
+        }
+        revalidatePath(`/dashboard/${orgId}/image-ads`);
+        
+        return { success: true, images: result.images };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Failed to generate image';
+        return { error: message };
     }
 }

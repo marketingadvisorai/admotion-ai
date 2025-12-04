@@ -10,8 +10,8 @@ export const metadata: Metadata = {
     description: 'Generate professional AI images for your ads.',
 };
 
-export default async function ImageAdsPage({ params }: { params: { orgId: string } }) {
-    const { orgId } = params;
+export default async function ImageAdsPage({ params }: { params: Promise<{ orgId: string }> }) {
+    const { orgId } = await params;
     const user = await getCurrentUser();
     const profile = user ? await getUserProfile(user.id) : null;
     const displayName =
