@@ -299,11 +299,121 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
     setPrompt('');
   };
 
-  // Compact prompt box component for sidebar
-  const PromptBox = ({ compact = false }: { compact?: boolean }) => (
+  // Original prompt box design (exactly as shown in screenshot)
+  const OriginalPromptBox = () => (
     <div className="relative">
-      <div className={`absolute inset-0 rounded-[20px] bg-gradient-to-r from-[#c8b5ff] via-[#b7d8ff] to-[#6ad9ff] opacity-90`} />
-      <div className={`relative rounded-[18px] bg-white shadow-lg border border-white ${compact ? 'p-3' : 'p-4'}`}>
+      <div className="absolute inset-0 rounded-[28px] bg-gradient-to-r from-[#c8b5ff] via-[#b7d8ff] to-[#6ad9ff] opacity-90" />
+      <div className="relative rounded-[26px] bg-white shadow-[0_25px_80px_-60px_rgba(15,23,42,0.55)] border border-white">
+        <Textarea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          rows={3}
+          placeholder="Ask for an ad..."
+          className="min-h-[140px] resize-none rounded-[26px] border-0 bg-transparent px-5 pt-5 pb-24 text-base md:text-lg leading-relaxed text-slate-900 placeholder:text-slate-500 focus-visible:border-0 focus-visible:ring-0"
+        />
+
+        <div className="flex items-center justify-between px-4 pb-4 -mt-14">
+          <div className="flex items-center gap-2">
+            <BrandPicker
+              brandKits={brandKitOptions}
+              analyzedBrands={analyzerProfiles}
+              llmProfiles={llmProfiles}
+              selectedBrandKitId={selectedBrandKitId}
+              selectedAnalyzerId={selectedAnalyzerId}
+              brandUrl={brandUrl}
+              isAnalyzing={isAnalyzingBrand}
+              analysis={activeBrand}
+              onSelectKit={(id) => {
+                setSelectedBrandKitId(id);
+                setBrandMode('kit');
+                setSelectedAnalyzerId('');
+                setBrandAnalysis(null);
+              }}
+              onSelectAnalyzer={(id) => {
+                const profile = analyzerProfiles.find((item) => item.id === id);
+                if (!profile) return;
+                setSelectedAnalyzerId(id);
+                setBrandMode('analyze');
+                setBrandAnalysis(profile.analysis);
+                if (profile.kitId) setSelectedBrandKitId(profile.kitId);
+              }}
+              onAnalyze={handleAnalyzeBrand}
+              onUrlChange={setBrandUrl}
+              onClear={() => {
+                setBrandMode('none');
+                setSelectedBrandKitId('');
+                setSelectedAnalyzerId('');
+                setBrandAnalysis(null);
+              }}
+              onUploadReference={(file) => {
+                const url = URL.createObjectURL(file);
+                setReferenceImages((prev) => [url, ...prev].slice(0, 4));
+              }}
+            />
+
+            <ModelDropdown profiles={llmProfiles} value={selectedLlmProfile} onChange={setSelectedLlmProfile} />
+
+            {/* Chat / Make Mode Toggle */}
+            <div className="flex items-center gap-1 rounded-full bg-white/80 border border-white/60 p-1">
+              <button
+                onClick={() => setCreativeMode('chat')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                  creativeMode === 'chat'
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <MessageSquare className="size-3.5" />
+                Chat
+              </button>
+              <button
+                onClick={() => setCreativeMode('make')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                  creativeMode === 'make'
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <Wand2 className="size-3.5" />
+                Make
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              size="icon"
+              className="h-12 w-12 rounded-[18px] bg-[#3178ff] text-white shadow-lg shadow-blue-500/20 hover:bg-[#2a6ae0]"
+              onClick={handleSubmit}
+              disabled={!prompt.trim() || isGenerating || isChatting}
+              aria-label={creativeMode === 'chat' ? 'Send message' : 'Generate ad'}
+            >
+              {(isGenerating || isChatting) ? <Loader2 className="size-5 animate-spin" /> : <ArrowUpRight className="size-5" />}
+            </Button>
+            <Button
+              size="icon"
+              variant="outline"
+              className="h-11 w-11 rounded-[16px] border-white/80 bg-white/90 shadow-sm text-slate-700"
+              aria-label="Voice input"
+            >
+              <AudioLines className="size-5" />
+            </Button>
+          </div>
+        </div>
+      </div>
+      {referenceImages.length > 0 && (
+        <div className="px-5 pb-3 text-xs text-slate-500">
+          {referenceImages.length} reference image{referenceImages.length > 1 ? 's' : ''} attached
+        </div>
+      )}
+    </div>
+  );
+
+  // Compact prompt box for sidebar (smaller version of original design)
+  const CompactPromptBox = () => (
+    <div className="relative">
+      <div className="absolute inset-0 rounded-[20px] bg-gradient-to-r from-[#c8b5ff] via-[#b7d8ff] to-[#6ad9ff] opacity-90" />
+      <div className="relative rounded-[18px] bg-white shadow-lg border border-white">
         <Textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
@@ -313,54 +423,15 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
               handleSubmit();
             }
           }}
-          rows={compact ? 2 : 3}
+          rows={2}
           placeholder={creativeMode === 'chat' ? "Ask for ideas..." : "Describe your ad..."}
-          className={`resize-none rounded-[14px] border-0 bg-transparent text-slate-900 placeholder:text-slate-400 focus-visible:ring-0 ${
-            compact ? 'min-h-[60px] text-sm px-3 pt-2 pb-12' : 'min-h-[100px] text-base px-4 pt-3 pb-16'
-          }`}
+          className="min-h-[70px] resize-none rounded-[18px] border-0 bg-transparent px-4 pt-3 pb-14 text-sm leading-relaxed text-slate-900 placeholder:text-slate-400 focus-visible:border-0 focus-visible:ring-0"
         />
-        <div className={`flex items-center justify-between ${compact ? 'px-2 pb-2 -mt-10' : 'px-3 pb-3 -mt-12'}`}>
+
+        <div className="flex items-center justify-between px-3 pb-3 -mt-12">
           <div className="flex items-center gap-1.5">
-            {!compact && (
-              <BrandPicker
-                brandKits={brandKitOptions}
-                analyzedBrands={analyzerProfiles}
-                llmProfiles={llmProfiles}
-                selectedBrandKitId={selectedBrandKitId}
-                selectedAnalyzerId={selectedAnalyzerId}
-                brandUrl={brandUrl}
-                isAnalyzing={isAnalyzingBrand}
-                analysis={activeBrand}
-                onSelectKit={(id) => {
-                  setSelectedBrandKitId(id);
-                  setBrandMode('kit');
-                  setSelectedAnalyzerId('');
-                  setBrandAnalysis(null);
-                }}
-                onSelectAnalyzer={(id) => {
-                  const profile = analyzerProfiles.find((item) => item.id === id);
-                  if (!profile) return;
-                  setSelectedAnalyzerId(id);
-                  setBrandMode('analyze');
-                  setBrandAnalysis(profile.analysis);
-                  if (profile.kitId) setSelectedBrandKitId(profile.kitId);
-                }}
-                onAnalyze={handleAnalyzeBrand}
-                onUrlChange={setBrandUrl}
-                onClear={() => {
-                  setBrandMode('none');
-                  setSelectedBrandKitId('');
-                  setSelectedAnalyzerId('');
-                  setBrandAnalysis(null);
-                }}
-                onUploadReference={(file) => {
-                  const url = URL.createObjectURL(file);
-                  setReferenceImages((prev) => [url, ...prev].slice(0, 4));
-                }}
-              />
-            )}
             <ModelDropdown profiles={llmProfiles} value={selectedLlmProfile} onChange={setSelectedLlmProfile} />
-            <div className={`flex items-center gap-0.5 rounded-full bg-slate-100 p-0.5 ${compact ? 'scale-90' : ''}`}>
+            <div className="flex items-center gap-0.5 rounded-full bg-slate-100 p-0.5">
               <button
                 onClick={() => setCreativeMode('chat')}
                 className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full transition-colors ${
@@ -368,7 +439,6 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
                 }`}
               >
                 <MessageSquare className="size-3" />
-                {!compact && 'Chat'}
               </button>
               <button
                 onClick={() => setCreativeMode('make')}
@@ -377,28 +447,23 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
                 }`}
               >
                 <Wand2 className="size-3" />
-                {!compact && 'Make'}
               </button>
             </div>
           </div>
           <Button
             size="icon"
-            className={`rounded-xl bg-[#3178ff] text-white shadow-md hover:bg-[#2a6ae0] ${compact ? 'h-8 w-8' : 'h-10 w-10'}`}
+            className="h-9 w-9 rounded-xl bg-[#3178ff] text-white shadow-md hover:bg-[#2a6ae0]"
             onClick={handleSubmit}
             disabled={!prompt.trim() || isGenerating || isChatting}
           >
-            {(isGenerating || isChatting) ? (
-              <Loader2 className={compact ? 'size-4 animate-spin' : 'size-5 animate-spin'} />
-            ) : (
-              <Send className={compact ? 'size-4' : 'size-5'} />
-            )}
+            {(isGenerating || isChatting) ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
           </Button>
         </div>
       </div>
     </div>
   );
 
-  // Initial view (no chat started) - centered layout
+  // Initial view (no chat started) - ORIGINAL DESIGN
   if (!isInChatSession) {
     return (
       <div className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(128,115,255,0.08),transparent_35%),radial-gradient(circle_at_80%_10%,rgba(82,196,255,0.12),transparent_32%),#f5f6fb] min-h-screen rounded-[32px]">
@@ -406,7 +471,7 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
           <div className="absolute left-[15%] right-[10%] top-[-220px] h-72 rounded-full bg-gradient-to-r from-[#c6d8ff]/70 via-[#e8d8ff]/60 to-[#c4f1f9]/70 blur-3xl" />
         </div>
 
-        <div className="relative mx-auto max-w-5xl px-4 pt-10 pb-16 md:px-10 space-y-10">
+        <div className="relative mx-auto max-w-6xl px-4 pt-10 pb-16 md:px-10 space-y-10">
           <div className="flex items-center justify-end gap-3">
             <Button variant="outline" size="sm" className="rounded-full border-white/60 bg-white/80 backdrop-blur-xl text-slate-800 shadow-sm hover:bg-white">
               150 Credit
@@ -424,14 +489,14 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
           </div>
 
           <div className="flex justify-center">
-            <div className="w-full max-w-2xl">
-              <PromptBox />
+            <div className="w-full max-w-3xl">
+              <OriginalPromptBox />
             </div>
           </div>
 
           {/* Error Display */}
           {error && (
-            <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 max-w-2xl mx-auto">
+            <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
               <div>
                 <p className="font-medium">Generation Failed</p>
@@ -621,7 +686,7 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
 
           {/* Compact Prompt Box */}
           <div className="p-4 border-t border-slate-200">
-            <PromptBox compact />
+            <CompactPromptBox />
           </div>
         </div>
       </div>
