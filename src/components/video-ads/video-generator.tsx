@@ -78,8 +78,17 @@ export function VideoGenerator({ displayName, brandKits, llmProfiles, orgId }: V
   );
   const [selectedAspect, setSelectedAspect] = useState<AspectRatioVideo>('16:9');
   const [duration, setDuration] = useState<number>(10);
-  const initialModel = llmProfiles.find((p) => ['gpt-5.1', 'nano-banana'].includes(p.slug))?.slug || 'gpt-5.1';
-  const [selectedLlmProfile, setSelectedLlmProfile] = useState<string>(initialModel);
+  
+  // Model selection for video generation (uses chat models for prompting)
+  const [selectedChatModel, setSelectedChatModel] = useState<string>('gpt-4o');
+  const [selectedImageModel, setSelectedImageModel] = useState<string>('dall-e-3');
+  
+  // Available APIs (default to OpenAI)
+  const [availableApis, setAvailableApis] = useState({
+    openai: true,
+    gemini: false,
+    anthropic: false,
+  });
   const [selectedBrandKitId, setSelectedBrandKitId] = useState<string>(brandKitOptions[0]?.id || '');
   const [selectedAnalyzerId, setSelectedAnalyzerId] = useState<string>('');
   const [brandAnalysis, setBrandAnalysis] = useState<BrandIdentityLite | null>(null);
@@ -156,7 +165,7 @@ export function VideoGenerator({ displayName, brandKits, llmProfiles, orgId }: V
         id: `${Date.now()}-${i}`,
         cover: sample.image,
         prompt: nextPrompt,
-        provider: selectedLlmProfile,
+        provider: selectedChatModel,
         duration,
         aspect: selectedAspect,
         createdAt: new Date(),
@@ -253,7 +262,14 @@ export function VideoGenerator({ displayName, brandKits, llmProfiles, orgId }: V
                         setReferenceImages((prev) => [url, ...prev].slice(0, 4));
                       }}
                     />
-                    <ModelDropdown profiles={llmProfiles} value={selectedLlmProfile} onChange={setSelectedLlmProfile} />
+                    <ModelDropdown
+                      availableApis={availableApis}
+                      mode="chat"
+                      selectedChatModel={selectedChatModel}
+                      selectedImageModel={selectedImageModel}
+                      onChatModelChange={setSelectedChatModel}
+                      onImageModelChange={setSelectedImageModel}
+                    />
                   </div>
 
                   <div className="flex items-center gap-2">

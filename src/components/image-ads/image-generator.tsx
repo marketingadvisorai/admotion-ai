@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { 
   ArrowUpRight, 
   AudioLines, 
@@ -24,10 +23,18 @@ import { GeneratedGrid, GeneratedImage } from './generated-grid';
 import { BrandKit } from '@/modules/brand-kits/types';
 import { LlmProfile } from '@/modules/llm/types';
 import { ImageGeneration, ImageAspectRatio } from '@/modules/image-generation/types';
+import { ImageProvider } from '@/modules/image-generation/types';
 import Image from 'next/image';
 
 type AspectRatio = '3:2' | '1:1' | '2:3';
 type CreativeMode = 'chat' | 'make';
+
+// Available API configurations for models
+interface AvailableApis {
+  openai: boolean;
+  gemini: boolean;
+  anthropic: boolean;
+}
 
 interface BrandIdentityLite {
   business_name?: string;
@@ -54,15 +61,22 @@ interface ChatMessage {
 export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: ImageGeneratorProps) {
   const [brandKitOptions, setBrandKitOptions] = useState<BrandKit[]>(brandKits);
   const [analyzerProfiles, setAnalyzerProfiles] = useState<AnalyzedBrandProfile[]>([]);
-  const [prompt, setPrompt] = useState(
-    'Generate a creative, eye-catching ad concept for a random product or service. Include a catchy headline, a short tagline, and a brief description that grabs attention.'
-  );
+  const [prompt, setPrompt] = useState('');
   const [selectedAspect, setSelectedAspect] = useState<AspectRatio>('1:1');
-  const initialModel = llmProfiles.find((p) => ['gpt-5.1', 'nano-banana'].includes(p.slug))?.slug || 'gpt-5.1';
-  const [selectedLlmProfile, setSelectedLlmProfile] = useState<string>(initialModel);
-  const [selectedBrandKitId, setSelectedBrandKitId] = useState<string>(brandKitOptions[0]?.id || '');
+  
+  // Separate model selection for chat and image generation
+  const [selectedChatModel, setSelectedChatModel] = useState<string>('gpt-4o');
+  const [selectedImageModel, setSelectedImageModel] = useState<string>('dall-e-3');
+  
+  // Track available APIs based on org secrets
+  const [availableApis, setAvailableApis] = useState<AvailableApis>({
+    openai: true, // Default to true, will be verified
+    gemini: false,
+    anthropic: false,
+  });
+  const [selectedBrandKitId, setSelectedBrandKitId] = useState<string>('');
   const [selectedAnalyzerId, setSelectedAnalyzerId] = useState<string>('');
-  const [brandMode, setBrandMode] = useState<BrandMode>(brandKitOptions.length ? 'kit' : 'none');
+  const [brandMode, setBrandMode] = useState<BrandMode>('none');
   const [brandUrl, setBrandUrl] = useState('');
   const [brandAnalysis, setBrandAnalysis] = useState<BrandIdentityLite | null>(null);
   const [isAnalyzingBrand, setIsAnalyzingBrand] = useState(false);
@@ -82,6 +96,30 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
+
+  // Check available APIs on mount
+  useEffect(() => {
+    const checkAvailableApis = async () => {
+      try {
+        const res = await fetch(`/api/org/available-apis?orgId=${orgId}`);
+        const data = await res.json();
+        if (data.success) {
+          setAvailableApis(data.apis);
+          // Set default models based on availability
+          if (data.apis.openai) {
+            setSelectedChatModel('gpt-4o');
+            setSelectedImageModel('dall-e-3');
+          } else if (data.apis.gemini) {
+            setSelectedChatModel('gemini-pro');
+            setSelectedImageModel('imagen-3');
+          }
+        }
+      } catch (err) {
+        console.error('Failed to check available APIs:', err);
+      }
+    };
+    checkAvailableApis();
+  }, [orgId]);
 
   // Check if we're in active chat mode (has messages)
   const isInChatSession = chatMessages.length > 0;
@@ -170,14 +208,63 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
     }
   };
 
-  // Get the selected image model from the model dropdown
-  const getImageProvider = () => {
-    if (selectedLlmProfile.includes('dall-e')) return 'openai';
-    if (selectedLlmProfile.includes('imagen') || selectedLlmProfile.includes('gemini-imagen')) return 'gemini';
+  // Get the image provider based on selected image model
+  const getImageProvider = (): ImageProvider => {
+    if (selectedImageModel.includes('dall-e')) return 'openai';
+    if (selectedImageModel.includes('imagen') || selectedImageModel.includes('gemini')) return 'gemini';
     return 'openai'; // default
   };
 
-  // Handle Chat mode - get AI ideas without generating images
+  // Get the actual model name for the API
+  const getImageModelName = (): string => {
+    switch (selectedImageModel) {
+      case 'dall-e-3': return 'dall-e-3';
+      case 'imagen-3': return 'imagen-3';
+      case 'gemini-imagen': return 'gemini-2.0-flash';
+      default: return 'dall-e-3';
+    }
+  };
+
+  // Get chat model for API
+  const getChatModelName = (): string => {
+    switch (selectedChatModel) {
+      case 'gpt-4o': return 'gpt-4o';
+      case 'gpt-4o-mini': return 'gpt-4o-mini';
+      case 'claude-3.5': return 'claude-3-5-sonnet-20241022';
+      case 'gemini-pro': return 'gemini-1.5-pro';
+      default: return 'gpt-4o-mini';
+    }
+  };
+
+  // Get the selected brand kit with full data
+  const getSelectedBrandContext = () => {
+    if (brandMode === 'kit' && selectedBrandKit) {
+      return {
+        brandId: selectedBrandKit.id,
+        brandName: selectedBrandKit.name,
+        businessName: selectedBrandKit.business_name,
+        description: selectedBrandKit.description,
+        colors: selectedBrandKit.colors?.map((c) => c.value).filter(Boolean),
+        brandVoice: selectedBrandKit.strategy?.brand_voice,
+        targetAudience: selectedBrandKit.strategy?.target_audience,
+        values: selectedBrandKit.strategy?.values,
+        keyDifferentiators: selectedBrandKit.strategy?.key_differentiators,
+      };
+    }
+    if (brandMode === 'analyze' && activeBrand) {
+      return {
+        businessName: activeBrand.business_name,
+        description: activeBrand.description,
+        colors: activeBrand.colors?.map((c) => c.value).filter(Boolean),
+        brandVoice: activeBrand.strategy?.brand_voice,
+        targetAudience: activeBrand.strategy?.target_audience,
+        values: activeBrand.strategy?.values,
+      };
+    }
+    return undefined;
+  };
+
+  // Handle Chat mode - get AI ideas without generating images (text only)
   const handleChat = async () => {
     if (!prompt.trim() || creativeMode !== 'chat') return;
     
@@ -189,14 +276,31 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
       timestamp: new Date(),
     };
     setChatMessages((prev) => [...prev, userMessage]);
+    const currentPrompt = prompt;
+    setPrompt('');
 
     try {
+      // Build brand context for chat
+      const brandContext = getSelectedBrandContext();
+      let systemPrompt = `You are a creative advertising expert. Help the user brainstorm ad concepts, headlines, taglines, and visual ideas. Be specific and actionable. When you have a solid concept, suggest they switch to "Make" mode to generate the images.`;
+      
+      if (brandContext) {
+        systemPrompt += `\n\nBrand Context:\n- Brand: ${brandContext.businessName || brandContext.brandName || 'Unknown'}\n`;
+        if (brandContext.description) systemPrompt += `- Description: ${brandContext.description}\n`;
+        if (brandContext.brandVoice) systemPrompt += `- Brand Voice: ${brandContext.brandVoice}\n`;
+        if (brandContext.targetAudience) systemPrompt += `- Target Audience: ${brandContext.targetAudience}\n`;
+        if (brandContext.values?.length) systemPrompt += `- Values: ${brandContext.values.join(', ')}\n`;
+        if (brandContext.colors?.length) systemPrompt += `- Brand Colors: ${brandContext.colors.join(', ')}\n`;
+      }
+
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [...chatMessages, userMessage].map((m) => ({ role: m.role, content: m.content })),
-          systemPrompt: `You are a creative advertising expert. Help the user brainstorm ad concepts, headlines, taglines, and visual ideas. Be specific and actionable. When you have a solid concept, suggest they switch to "Make" mode to generate the images.`,
+          systemPrompt,
+          model: getChatModelName(),
+          orgId,
         }),
       });
 
@@ -209,30 +313,28 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
           timestamp: new Date(),
         };
         setChatMessages((prev) => [...prev, assistantMessage]);
+      } else if (data.error) {
+        setError(data.error);
       }
     } catch (err) {
       console.error('Chat failed:', err);
+      setError('Failed to get response from AI');
     } finally {
       setIsChatting(false);
-      setPrompt('');
     }
   };
 
-  // Handle Make mode - generate images
+  // Handle Make mode - generate images using selected image model with brand context
   const handleGenerate = async () => {
-    const nextPrompt = buildPrompt();
-    if (!nextPrompt.trim()) return;
+    if (!prompt.trim()) return;
     
     setError(null);
     setIsGenerating(true);
     
     try {
-      const brandContext = activeBrand ? {
-        businessName: activeBrand.business_name,
-        colors: activeBrand.colors?.map((c) => c.value).filter(Boolean),
-        brandVoice: activeBrand.strategy?.brand_voice,
-        targetAudience: activeBrand.strategy?.target_audience,
-      } : undefined;
+      // Get full brand context for image generation
+      const brandContext = getSelectedBrandContext();
+      const enhancedPrompt = buildPrompt();
 
       const aspectRatioMap: Record<AspectRatio, ImageAspectRatio> = {
         '1:1': '1:1',
@@ -245,8 +347,9 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orgId,
-          prompt: nextPrompt,
+          prompt: enhancedPrompt,
           provider: getImageProvider(),
+          model: getImageModelName(),
           aspectRatio: aspectRatioMap[selectedAspect],
           numberOfImages: 1,
           brandContext,
@@ -262,12 +365,15 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
       const newImages: GeneratedImage[] = data.images.map((img: ImageGeneration) => ({
         id: img.id,
         url: img.result_url || '',
-        prompt: img.prompt_used || nextPrompt,
+        prompt: img.prompt_used || enhancedPrompt,
         style: img.style,
         createdAt: new Date(img.created_at),
       }));
 
       setGeneratedImages((prev) => [...newImages, ...prev]);
+      
+      // Clear prompt after successful generation
+      setPrompt('');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to generate image';
       setError(message);
@@ -304,12 +410,12 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
     <div className="relative">
       <div className="absolute inset-0 rounded-[28px] bg-gradient-to-r from-[#c8b5ff] via-[#b7d8ff] to-[#6ad9ff] opacity-90" />
       <div className="relative rounded-[26px] bg-white shadow-[0_25px_80px_-60px_rgba(15,23,42,0.55)] border border-white">
-        <Textarea
+        <textarea
           value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setPrompt(e.target.value)}
           rows={3}
           placeholder="Ask for an ad..."
-          className="min-h-[140px] resize-none rounded-[26px] border-0 bg-transparent px-5 pt-5 pb-24 text-base md:text-lg leading-relaxed text-slate-900 placeholder:text-slate-500 focus-visible:border-0 focus-visible:ring-0"
+          className="w-full min-h-[140px] resize-none rounded-[26px] border-0 bg-transparent px-5 pt-5 pb-24 text-base md:text-lg leading-relaxed text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-0"
         />
 
         <div className="flex items-center justify-between px-4 pb-4 -mt-14">
@@ -351,7 +457,14 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
               }}
             />
 
-            <ModelDropdown profiles={llmProfiles} value={selectedLlmProfile} onChange={setSelectedLlmProfile} />
+            <ModelDropdown
+              availableApis={availableApis}
+              mode={creativeMode}
+              selectedChatModel={selectedChatModel}
+              selectedImageModel={selectedImageModel}
+              onChatModelChange={setSelectedChatModel}
+              onImageModelChange={setSelectedImageModel}
+            />
 
             {/* Chat / Make Mode Toggle */}
             <div className="flex items-center gap-1 rounded-full bg-white/80 border border-white/60 p-1">
@@ -414,10 +527,10 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
     <div className="relative">
       <div className="absolute inset-0 rounded-[20px] bg-gradient-to-r from-[#c8b5ff] via-[#b7d8ff] to-[#6ad9ff] opacity-90" />
       <div className="relative rounded-[18px] bg-white shadow-lg border border-white">
-        <Textarea
+        <textarea
           value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => {
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setPrompt(e.target.value)}
+          onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
               handleSubmit();
@@ -425,12 +538,20 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
           }}
           rows={2}
           placeholder={creativeMode === 'chat' ? "Ask for ideas..." : "Describe your ad..."}
-          className="min-h-[70px] resize-none rounded-[18px] border-0 bg-transparent px-4 pt-3 pb-14 text-sm leading-relaxed text-slate-900 placeholder:text-slate-400 focus-visible:border-0 focus-visible:ring-0"
+          className="w-full min-h-[70px] resize-none rounded-[18px] border-0 bg-transparent px-4 pt-3 pb-14 text-sm leading-relaxed text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
         />
 
         <div className="flex items-center justify-between px-3 pb-3 -mt-12">
           <div className="flex items-center gap-1.5">
-            <ModelDropdown profiles={llmProfiles} value={selectedLlmProfile} onChange={setSelectedLlmProfile} />
+            <ModelDropdown
+              availableApis={availableApis}
+              mode={creativeMode}
+              selectedChatModel={selectedChatModel}
+              selectedImageModel={selectedImageModel}
+              onChatModelChange={setSelectedChatModel}
+              onImageModelChange={setSelectedImageModel}
+              compact
+            />
             <div className="flex items-center gap-0.5 rounded-full bg-slate-100 p-0.5">
               <button
                 onClick={() => setCreativeMode('chat')}

@@ -110,7 +110,7 @@ export function BrandPicker({
                     key={kit.id}
                     onClick={() => onSelectKit(kit.id)}
                     className={cn(
-                      'group relative w-full flex items-center gap-4 rounded-2xl border p-3 text-left transition-all duration-200',
+                      'group relative w-full flex items-start gap-4 rounded-2xl border p-3 text-left transition-all duration-200',
                       selectedBrandKitId === kit.id
                         ? 'border-purple-200 bg-white shadow-md shadow-purple-100/50 ring-1 ring-purple-100'
                         : 'border-slate-200 bg-white hover:border-purple-200 hover:shadow-sm'
@@ -130,6 +130,27 @@ export function BrandPicker({
                         {kit.name}
                       </p>
                       <p className="text-xs text-slate-500 line-clamp-1">{kit.business_name || 'No business name'}</p>
+                      
+                      {/* Show brand colors when selected */}
+                      {selectedBrandKitId === kit.id && kit.colors && kit.colors.length > 0 && (
+                        <div className="flex gap-1 mt-2">
+                          {kit.colors.slice(0, 5).map((c, i) => (
+                            <div
+                              key={i}
+                              className="size-4 rounded-full border border-white/30 shadow-sm"
+                              style={{ background: c.value }}
+                              title={c.name}
+                            />
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Show brand voice when selected */}
+                      {selectedBrandKitId === kit.id && kit.strategy?.brand_voice && (
+                        <p className="text-[10px] text-purple-600 mt-1 line-clamp-1">
+                          Voice: {kit.strategy.brand_voice}
+                        </p>
+                      )}
                     </div>
                     {selectedBrandKitId === kit.id && (
                       <div className="absolute right-3 top-3 bg-purple-100 text-purple-600 rounded-full p-1">
