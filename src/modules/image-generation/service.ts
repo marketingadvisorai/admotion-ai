@@ -348,18 +348,18 @@ function resolveModel(input: ImageGenerationInput): { provider: ImageProvider; m
     // If explicitly specified
     if (input.model) {
         const provider: ImageProvider = 
-            input.model.startsWith('gpt-') || input.model === 'dall-e-3' 
+            input.model.startsWith('dall-e') || input.model.startsWith('gpt-')
                 ? 'openai' 
                 : 'gemini';
         return { provider, model: input.model };
     }
     
-    // Default to gpt-image-1 (OpenAI) or nano-banana-pro (Gemini)
+    // Default to dall-e-3 (OpenAI) or nano-banana-pro (Gemini)
     if (input.provider === 'gemini') {
-        return { provider: 'gemini', model: 'nano-banana-pro' }; // Gemini 3 Pro Image
+        return { provider: 'gemini', model: 'nano-banana-pro' };
     }
     
-    return { provider: 'openai', model: 'gpt-image-1' };
+    return { provider: 'openai', model: 'dall-e-3' };
 }
 
 // ============================================
@@ -368,7 +368,7 @@ function resolveModel(input: ImageGenerationInput): { provider: ImageProvider; m
 
 /**
  * Main image generation function supporting multiple providers
- * Uses gpt-image-1 (OpenAI) or imagen-3 (Google) by default
+ * Uses DALL-E 3 (OpenAI) or Imagen 3 (Google) by default
  */
 export async function generateImages(input: ImageGenerationInput): Promise<GenerateImageResult> {
     const supabase = await createClient();
@@ -401,8 +401,8 @@ export async function generateImages(input: ImageGenerationInput): Promise<Gener
         const generatedImages: ImageGeneration[] = [];
 
         if (provider === 'openai') {
-            // Generate with OpenAI gpt-image-1 (default) or specified model
-            const openaiModel = model as 'gpt-image-1' | 'gpt-image-1-mini' | 'dall-e-3';
+            // Generate with OpenAI DALL-E 3 (default) or DALL-E 2
+            const openaiModel = model as 'dall-e-3' | 'dall-e-2' | 'gpt-image-1' | 'gpt-image-1-mini';
             
             const result = await generateWithOpenAI(apiKey, {
                 prompt: finalPrompt,
@@ -412,7 +412,7 @@ export async function generateImages(input: ImageGenerationInput): Promise<Gener
                 model: openaiModel,
             });
 
-            // Handle base64 images (gpt-image-1) or URLs (dall-e-3)
+            // Handle base64 images (DALL-E 2) or URLs (DALL-E 3)
             if (result.base64Images && result.base64Images.length > 0) {
                 for (const base64 of result.base64Images) {
                     const fileName = `${input.orgId}/${Date.now()}-${Math.random().toString(36).slice(2)}.png`;

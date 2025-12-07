@@ -1,33 +1,34 @@
 /**
  * OpenAI Image Generation Provider
- * Uses gpt-image-1 (latest) for high-quality marketing images
- * Fallback to gpt-image-1-mini for cost-saving mode
+ * Uses DALL-E 3 for high-quality marketing images
+ * Supports DALL-E 2 for cost-saving with base64 support
  */
 
 import OpenAI from 'openai';
 import { ImageAspectRatio } from '../types';
 
-// gpt-image-1 supports these sizes
-type GPTImageSize = '1024x1024' | '1536x1024' | '1024x1536' | 'auto';
+// DALL-E 3 supported sizes
+type DallE3Size = '1024x1024' | '1792x1024' | '1024x1792';
+// DALL-E 2 supported sizes
+type DallE2Size = '256x256' | '512x512' | '1024x1024';
 
-const ASPECT_TO_SIZE: Record<ImageAspectRatio, GPTImageSize> = {
+const DALLE3_ASPECT_TO_SIZE: Record<ImageAspectRatio, DallE3Size> = {
     '1:1': '1024x1024',
-    '4:5': '1024x1536',  // Portrait
-    '3:2': '1536x1024',  // Landscape
-    '2:3': '1024x1536',  // Portrait
-    '16:9': '1536x1024', // Landscape (closest match)
-    '9:16': '1024x1536', // Portrait
+    '4:5': '1024x1792',   // Portrait
+    '3:2': '1792x1024',   // Landscape
+    '2:3': '1024x1792',   // Portrait
+    '16:9': '1792x1024',  // Landscape
+    '9:16': '1024x1792',  // Portrait
 };
 
-export type OpenAIImageModel = 'gpt-image-1' | 'gpt-image-1-mini' | 'dall-e-3';
+export type OpenAIImageModel = 'dall-e-3' | 'dall-e-2' | 'gpt-image-1' | 'gpt-image-1-mini';
 
 export interface OpenAIGenerateOptions {
     prompt: string;
     aspectRatio?: ImageAspectRatio;
     numberOfImages?: number;
-    quality?: 'low' | 'medium' | 'high' | 'auto';
+    quality?: 'standard' | 'hd' | 'low' | 'medium' | 'high' | 'auto';
     model?: OpenAIImageModel;
-    // Legacy DALL-E options (for backwards compatibility)
     style?: 'vivid' | 'natural';
 }
 
@@ -39,63 +40,50 @@ export interface OpenAIGenerateResult {
 }
 
 /**
- * Generate images using OpenAI's gpt-image-1 model
- * This is the latest and most capable image generation model
+ * Generate images using OpenAI's image models
+ * DALL-E 3: Best quality, single image per request
+ * DALL-E 2: Supports base64 output, multiple images
  */
 export async function generateWithOpenAI(
     apiKey: string,
     options: OpenAIGenerateOptions
 ): Promise<OpenAIGenerateResult> {
     const openai = new OpenAI({ apiKey });
-    const model = options.model || 'gpt-image-1';
-    const numberOfImages = Math.min(options.numberOfImages || 1, 4);
-
-    // Use gpt-image-1 for best quality
+    // Map legacy model names to actual OpenAI models
+    let model = options.model || 'dall-e-3';
     if (model === 'gpt-image-1' || model === 'gpt-image-1-mini') {
-        return generateWithGPTImage(openai, options, model, numberOfImages);
+        model = 'dall-e-3'; // Use DALL-E 3 as the actual model
+    }
+    const numberOfImages = Math.min(options.numberOfImages || 1, model === 'dall-e-3' ? 1 : 4);
+
+    if (model === 'dall-e-2') {
+        return generateWithDallE2(openai, options, numberOfImages);
     }
 
-    // Fallback to DALL-E 3 for legacy support
+    // Default to DALL-E 3 for best quality
     return generateWithDallE3(openai, options, numberOfImages);
 }
 
 /**
- * Generate with gpt-image-1 (latest model)
+ * Generate with DALL-E 2 (supports base64 output)
  */
-async function generateWithGPTImage(
+async function generateWithDallE2(
     openai: OpenAI,
     options: OpenAIGenerateOptions,
-    model: 'gpt-image-1' | 'gpt-image-1-mini',
     numberOfImages: number
 ): Promise<OpenAIGenerateResult> {
-    const size = ASPECT_TO_SIZE[options.aspectRatio || '1:1'];
-    
-    // Map quality levels
-    const qualityMap: Record<string, 'low' | 'medium' | 'high' | 'auto'> = {
-        'standard': 'medium',
-        'hd': 'high',
-        'low': 'low',
-        'medium': 'medium',
-        'high': 'high',
-        'auto': 'auto',
-    };
-    const quality = qualityMap[options.quality || 'high'] || 'high';
-
     const results: string[] = [];
     const base64Results: string[] = [];
 
-    // gpt-image-1 can generate multiple images per request
     const response = await openai.images.generate({
-        model,
+        model: 'dall-e-2',
         prompt: options.prompt,
-        size,
-        quality,
+        size: '1024x1024',
         n: numberOfImages,
-        response_format: 'b64_json', // Get base64 for reliable storage
+        response_format: 'b64_json',
     });
 
-    // Handle response - check if it has data property (non-streaming response)
-    if ('data' in response && Array.isArray(response.data)) {
+    if (response.data) {
         for (const item of response.data) {
             if (item.b64_json) {
                 base64Results.push(item.b64_json);
@@ -109,7 +97,7 @@ async function generateWithGPTImage(
     return {
         urls: results,
         base64Images: base64Results,
-        model,
+        model: 'dall-e-2',
     };
 }
 
@@ -135,13 +123,16 @@ async function generateWithDallE3(
     const results: string[] = [];
     let revisedPrompt: string | undefined;
 
+    // Map quality options to DALL-E 3 quality (only 'standard' or 'hd')
+    const qualityValue = ['high', 'hd'].includes(options.quality || '') ? 'hd' : 'standard';
+
     // DALL-E 3 only generates one image at a time
     for (let i = 0; i < numberOfImages; i++) {
         const response = await openai.images.generate({
             model: 'dall-e-3',
             prompt: options.prompt,
             size,
-            quality: options.quality === 'high' ? 'hd' : 'standard',
+            quality: qualityValue,
             style: options.style || 'vivid',
             n: 1,
         });

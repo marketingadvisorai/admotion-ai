@@ -42,11 +42,10 @@ const ALL_CHAT_MODELS: ModelOption[] = [
 
 // All available image generation models (latest first)
 const ALL_IMAGE_MODELS: ModelOption[] = [
-  { value: 'gpt-image-1', label: 'GPT Image', detail: 'OpenAI', bestFor: 'Best quality (Recommended)', provider: 'openai' },
-  { value: 'gpt-image-1-mini', label: 'GPT Image Mini', detail: 'OpenAI', bestFor: 'Cost-saving mode', provider: 'openai' },
-  { value: 'nano-banana-pro', label: 'Nano Banana Pro', detail: 'Google', bestFor: 'Highest quality (Gemini 3 Pro)', provider: 'gemini' },
-  { value: 'nano-banana', label: 'Nano Banana', detail: 'Google', bestFor: 'Fast drafts (Gemini 2.5 Flash)', provider: 'gemini' },
-  { value: 'dall-e-3', label: 'DALL-E 3', detail: 'OpenAI', bestFor: 'Legacy support', provider: 'openai' },
+  { value: 'dall-e-3', label: 'DALL-E 3', detail: 'OpenAI', bestFor: 'Best quality (Recommended)', provider: 'openai' },
+  { value: 'dall-e-2', label: 'DALL-E 2', detail: 'OpenAI', bestFor: 'Cost-saving mode', provider: 'openai' },
+  { value: 'nano-banana-pro', label: 'Imagen 3', detail: 'Google', bestFor: 'Highest quality', provider: 'gemini' },
+  { value: 'nano-banana', label: 'Imagen 2', detail: 'Google', bestFor: 'Fast drafts', provider: 'gemini' },
 ];
 
 // All available video generation models (latest first)

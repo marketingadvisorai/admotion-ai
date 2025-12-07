@@ -28,13 +28,12 @@ import Image from 'next/image';
 type AspectRatio = '3:2' | '1:1' | '2:3';
 type CreativeMode = 'chat' | 'make';
 
-// Latest image generation models
+// Available image generation models
 const IMAGE_VARIANTS = [
-  { value: 'gpt-image-1', label: 'GPT Image (OpenAI)', provider: 'openai', recommended: true },
-  { value: 'gpt-image-1-mini', label: 'GPT Image Mini (Cost-Saving)', provider: 'openai', recommended: false },
-  { value: 'nano-banana-pro', label: 'Nano Banana Pro (Gemini 3 Pro)', provider: 'gemini', recommended: true },
-  { value: 'nano-banana', label: 'Nano Banana (Gemini 2.5 Flash)', provider: 'gemini', recommended: false },
-  { value: 'dall-e-3', label: 'DALL·E 3 (Legacy)', provider: 'openai', recommended: false },
+  { value: 'dall-e-3', label: 'DALL-E 3 (Best Quality)', provider: 'openai', recommended: true },
+  { value: 'dall-e-2', label: 'DALL-E 2 (Cost-Saving)', provider: 'openai', recommended: false },
+  { value: 'nano-banana-pro', label: 'Imagen 3 (Google)', provider: 'gemini', recommended: true },
+  { value: 'nano-banana', label: 'Imagen 2 (Fast)', provider: 'gemini', recommended: false },
 ];
 
 interface AvailableApis {
@@ -103,9 +102,9 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
   const [error, setError] = useState<string | null>(null);
   const [isLoadingImages, setIsLoadingImages] = useState(true);
 
-  // Model selection - default to latest models
+  // Model selection - default to best models
   const [selectedChatModel, setSelectedChatModel] = useState<string>('gpt-5.1');
-  const [selectedImageModel, setSelectedImageModel] = useState<string>('gpt-image-1');
+  const [selectedImageModel, setSelectedImageModel] = useState<string>('dall-e-3');
   const [variantImageModels, setVariantImageModels] = useState<string[]>([]);
   const [availableApis, setAvailableApis] = useState<AvailableApis>({
     openai: true,
