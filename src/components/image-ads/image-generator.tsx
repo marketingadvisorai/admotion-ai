@@ -10,7 +10,6 @@ import {
   MessageSquare, 
   Wand2, 
   Send,
-  Download,
   Trash2,
   Sparkles,
   CheckCircle2,
@@ -115,7 +114,7 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
   });
 
   // Chat state
-  const [creativeMode, setCreativeMode] = useState<CreativeMode>('make');
+  const [creativeMode, setCreativeMode] = useState<CreativeMode>('chat');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isChatting, setIsChatting] = useState(false);
   const [proposedCopy, setProposedCopy] = useState<ProposedCopy | null>(null);
@@ -123,34 +122,52 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
   
   // Preview state
   const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
+  const sessionHistory = useMemo(
+    () => generatedImages.filter((img) => img.sessionId).slice(0, 12),
+    [generatedImages]
+  );
+  const recentSessions = useMemo(() => {
+    const map = new Map<string, GeneratedImage>();
+    sessionHistory.forEach((img) => {
+      if (img.sessionId && !map.has(img.sessionId)) {
+        map.set(img.sessionId, img);
+      }
+    });
+    return Array.from(map.values());
+  }, [sessionHistory]);
   
   const chatEndRef = useRef<HTMLDivElement>(null);
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Derived state
+  // Derived state - show split view only when user has started chatting
   const isInChatSession = chatMessages.length > 0;
-  const canGenerate = proposedCopy?.confirmed || (creativeMode === 'make' && prompt.trim().length > 0);
 
   // Track current session images (images created in this session only)
   const [currentSessionImages, setCurrentSessionImages] = useState<GeneratedImage[]>([]);
+  
+  // Track if user explicitly entered chat (vs auto-loaded session)
+  const [userStartedChat, setUserStartedChat] = useState(false);
   
   // Chat session persistence to Supabase (10-day retention)
   const { sessionId, saveSession, createNewSession: createNewChatSession, loadSessionById, isLoading: isSessionLoading } = useChatSession({
     orgId,
     onSessionLoaded: (session) => {
-      if (session.messages?.length) {
-        setChatMessages(session.messages);
-      }
-      if (session.proposedCopy) {
-        setProposedCopy(session.proposedCopy);
-      }
-      if (session.brandKitId) {
-        setSelectedBrandKitId(session.brandKitId);
-      }
-      if (session.selectedModels) {
-        setSelectedChatModel(session.selectedModels.chatModel);
-        setSelectedImageModel(session.selectedModels.imageModel);
-        setVariantImageModels(session.selectedModels.variantModels);
+      // Only restore session if user explicitly loaded it (clicked history)
+      if (userStartedChat) {
+        if (session.messages?.length) {
+          setChatMessages(session.messages);
+        }
+        if (session.proposedCopy) {
+          setProposedCopy(session.proposedCopy);
+        }
+        if (session.brandKitId) {
+          setSelectedBrandKitId(session.brandKitId);
+        }
+        if (session.selectedModels) {
+          setSelectedChatModel(session.selectedModels.chatModel);
+          setSelectedImageModel(session.selectedModels.imageModel);
+          setVariantImageModels(session.selectedModels.variantModels);
+        }
       }
     },
   });
@@ -331,6 +348,8 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
   const handleChat = async () => {
     if (!prompt.trim()) return;
     
+    // Mark that user started chatting (enables split view)
+    setUserStartedChat(true);
     setIsChatting(true);
     setError(null);
     
@@ -576,12 +595,14 @@ Be concise and actionable.`;
     }
   };
 
-  // Clear chat and create new session
+  // Clear chat and create new session - returns to initial view
   const handleClearChat = async () => {
     setChatMessages([]);
     setProposedCopy(null);
     setPrompt('');
-    setCurrentSessionImages([]); // Clear current session images
+    setCurrentSessionImages([]);
+    setUserStartedChat(false); // Return to initial view
+    setSelectedImage(null);
     // Create a new session in Supabase
     await createNewChatSession();
   };
@@ -591,8 +612,15 @@ Be concise and actionable.`;
     setSelectedImage(image);
     // If image has a session ID, load that session's chat history
     if (image.sessionId) {
+      setUserStartedChat(true); // Mark that user explicitly loaded a session
       await loadSessionById(image.sessionId);
     }
+  };
+  
+  // Handle loading a session from history
+  const handleLoadSession = async (targetSessionId: string) => {
+    setUserStartedChat(true);
+    await loadSessionById(targetSessionId);
   };
 
   // Confirm proposed copy
@@ -777,6 +805,36 @@ Be concise and actionable.`;
                 <X className="size-4" />
               </button>
             </div>
+          )}
+
+          {/* Recent Chat Sessions */}
+          {recentSessions.length > 0 && (
+            <section className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-slate-900">Recent Chats</h3>
+                <span className="text-sm text-slate-500">{recentSessions.length} sessions</span>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {recentSessions.slice(0, 6).map((session) => (
+                  <button
+                    key={session.sessionId}
+                    onClick={() => session.sessionId && handleLoadSession(session.sessionId)}
+                    className="flex-shrink-0 group relative w-20 h-20 rounded-xl overflow-hidden bg-slate-100 border-2 border-transparent hover:border-purple-500 transition-all"
+                  >
+                    <Image src={session.url} alt="" fill className="object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute bottom-1 left-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-[9px] text-white font-medium truncate block">
+                        {new Date(session.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="absolute top-1 right-1">
+                      <MessageSquare className="size-3 text-white drop-shadow-md" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
           )}
 
           {/* Generated Images */}
