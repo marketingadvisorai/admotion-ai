@@ -19,6 +19,7 @@ import {
 import { BrandPicker, BrandMode, AnalyzedBrandProfile } from '@/components/ads/brand-picker';
 import { ModelDropdown } from '@/components/ads/model-dropdown';
 import { GeneratedGrid, GeneratedImage } from './generated-grid';
+import { useChatSession } from './use-chat-session';
 import { BrandKit } from '@/modules/brand-kits/types';
 import { LlmProfile } from '@/modules/llm/types';
 import { ImageGeneration, ImageAspectRatio } from '@/modules/image-generation/types';
@@ -65,17 +66,24 @@ interface ChatMessage {
   timestamp: Date;
 }
 
+// Overlay element that will be added to the image
+interface OverlayElement {
+  type: 'headline' | 'button' | 'logo' | 'badge' | 'tagline';
+  text?: string;
+  position?: string;
+  style?: string;
+}
+
 // Proposed ad copy from chat - user confirms before generating
 interface ProposedCopy {
   headline: string;
-  primaryText: string;
   ctaText: string;
   imageDirection: string;
+  overlayElements: OverlayElement[];
   confirmed: boolean;
 }
 
 export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: ImageGeneratorProps) {
-  const STORAGE_KEY = `image-chat-${orgId}`;
 
   // Brand state
   const [brandKitOptions, setBrandKitOptions] = useState<BrandKit[]>(brandKits);
@@ -123,45 +131,49 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
   const isInChatSession = chatMessages.length > 0;
   const canGenerate = proposedCopy?.confirmed || (creativeMode === 'make' && prompt.trim().length > 0);
 
+  // Track current session images (images created in this session only)
+  const [currentSessionImages, setCurrentSessionImages] = useState<GeneratedImage[]>([]);
+  
+  // Chat session persistence to Supabase (10-day retention)
+  const { sessionId, saveSession, createNewSession: createNewChatSession, loadSessionById, isLoading: isSessionLoading } = useChatSession({
+    orgId,
+    onSessionLoaded: (session) => {
+      if (session.messages?.length) {
+        setChatMessages(session.messages);
+      }
+      if (session.proposedCopy) {
+        setProposedCopy(session.proposedCopy);
+      }
+      if (session.brandKitId) {
+        setSelectedBrandKitId(session.brandKitId);
+      }
+      if (session.selectedModels) {
+        setSelectedChatModel(session.selectedModels.chatModel);
+        setSelectedImageModel(session.selectedModels.imageModel);
+        setVariantImageModels(session.selectedModels.variantModels);
+      }
+    },
+  });
+
   // Auto-scroll chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
-  // Persist chat + copy so users can continue later
+  // Save session to Supabase when state changes
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return;
-    try {
-      const parsed = JSON.parse(saved);
-      if (parsed.chatMessages) {
-        const restored = (parsed.chatMessages as any[]).map((m) => ({
-          ...m,
-          timestamp: new Date(m.timestamp),
-        }));
-        setChatMessages(restored);
-      }
-      if (parsed.proposedCopy) setProposedCopy(parsed.proposedCopy);
-      if (parsed.selectedBrandKitId) setSelectedBrandKitId(parsed.selectedBrandKitId);
-      if (parsed.selectedImageModel) setSelectedImageModel(parsed.selectedImageModel);
-      if (parsed.selectedChatModel) setSelectedChatModel(parsed.selectedChatModel);
-    } catch (err) {
-      console.warn('Failed to restore chat history', err);
-    }
-  }, [STORAGE_KEY]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const payload = {
-      chatMessages,
+    if (isSessionLoading) return;
+    saveSession({
+      messages: chatMessages,
       proposedCopy,
-      selectedBrandKitId,
-      selectedImageModel,
-      selectedChatModel,
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  }, [STORAGE_KEY, chatMessages, proposedCopy, selectedBrandKitId, selectedImageModel, selectedChatModel]);
+      brandKitId: selectedBrandKitId || null,
+      selectedModels: {
+        chatModel: selectedChatModel,
+        imageModel: selectedImageModel,
+        variantModels: variantImageModels,
+      },
+    });
+  }, [chatMessages, proposedCopy, selectedBrandKitId, selectedChatModel, selectedImageModel, variantImageModels, saveSession, isSessionLoading]);
 
   // Check available APIs on mount and set latest models
   useEffect(() => {
@@ -334,20 +346,26 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
 
     try {
       const brandContext = getSelectedBrandContext();
-      let systemPrompt = `You are a creative advertising expert helping create image ads. 
+      let systemPrompt = `You are a creative advertising expert helping create image ads.
 
 Your job is to:
 1. Discuss the user's ad concept and goals
-2. When you have enough information, propose specific ad copy with this EXACT format:
+2. When you have enough information, propose the IMAGE OVERLAY elements with this EXACT format:
 
 ---PROPOSED AD COPY---
-HEADLINE: [catchy headline text]
-PRIMARY TEXT: [supporting body copy]
-CTA: [call-to-action button text]
+HEADLINE: [catchy headline text that will appear ON the image]
+CTA: [call-to-action button text that will appear ON the image]
 IMAGE DIRECTION: [brief visual description for image generation]
+OVERLAY_ELEMENTS: [comma-separated list of elements to add: headline, button, logo, badge, tagline]
 ---END COPY---
 
-Always propose copy when you have a clear idea. Ask clarifying questions if needed first.
+IMPORTANT: Focus ONLY on what text/elements will be OVERLAID on the image:
+- HEADLINE: The main text displayed prominently on the image
+- CTA: The button text (e.g., "Shop Now", "Learn More")
+- OVERLAY_ELEMENTS: Which visual elements to include on the image
+
+Do NOT suggest "primary text" or body copy - we only need image overlay elements.
+Always propose when you have a clear idea. Ask clarifying questions if needed first.
 Be concise and actionable.`;
       
       if (brandContext) {
@@ -385,21 +403,32 @@ Be concise and actionable.`;
         if (copyMatch) {
           const copyText = copyMatch[1];
           const headline = copyText.match(/HEADLINE:\s*(.+)/)?.[1]?.trim() || '';
-          const primaryText = copyText.match(/PRIMARY TEXT:\s*(.+)/)?.[1]?.trim() || '';
           const cta = copyText.match(/CTA:\s*(.+)/)?.[1]?.trim() || '';
           const imageDir = copyText.match(/IMAGE DIRECTION:\s*(.+)/)?.[1]?.trim() || '';
+          const overlayStr = copyText.match(/OVERLAY_ELEMENTS:\s*(.+)/)?.[1]?.trim() || 'headline, button';
           
-          if (headline || primaryText) {
+          // Parse overlay elements from comma-separated list
+          const overlayTypes = overlayStr.split(',').map((s: string) => s.trim().toLowerCase());
+          const overlayElements: OverlayElement[] = overlayTypes.map((type: string) => {
+            if (type === 'headline') return { type: 'headline' as const, text: headline };
+            if (type === 'button' || type === 'cta') return { type: 'button' as const, text: cta };
+            if (type === 'logo') return { type: 'logo' as const };
+            if (type === 'badge') return { type: 'badge' as const };
+            if (type === 'tagline') return { type: 'tagline' as const };
+            return { type: 'headline' as const, text: type };
+          });
+          
+          if (headline) {
             setProposedCopy({
               headline,
-              primaryText,
               ctaText: cta || 'Learn More',
               imageDirection: imageDir || 'Professional ad image matching the copy',
+              overlayElements,
               confirmed: false,
             });
           }
         }
-      } else if (data.error) {
+
         setError(data.error);
       }
     } catch (err) {
@@ -413,7 +442,7 @@ Be concise and actionable.`;
   // Generate image handler
   const handleGenerate = async () => {
     if (!proposedCopy?.confirmed) {
-      setError('Confirm headline, primary text, CTA, and image direction before generating.');
+      setError('Confirm headline, CTA, and image direction before generating.');
       return;
     }
     
@@ -431,9 +460,13 @@ Be concise and actionable.`;
       const promptSpec = {
         copy: {
           headline: proposedCopy.headline,
-          primary_text: proposedCopy.primaryText,
           cta_text: proposedCopy.ctaText,
         },
+        overlay_elements: proposedCopy.overlayElements.map(el => ({
+          type: el.type,
+          text: el.text,
+          position: el.position || 'auto',
+        })),
         visual_direction: proposedCopy.imageDirection,
         aspect: selectedAspect,
         brand: {
@@ -491,11 +524,13 @@ Be concise and actionable.`;
           prompt: img.prompt_used || enhancedPrompt,
           style: `${img.style || ''} (${model})`,
           createdAt: new Date(img.created_at),
+          sessionId: sessionId || undefined, // Link image to current chat session
         }));
         batchedImages.push(...newImages);
       }
 
       setGeneratedImages((prev) => [...batchedImages, ...prev]);
+      setCurrentSessionImages((prev) => [...batchedImages, ...prev]); // Track images in current session
       setPrompt('');
       
       // Reset proposed copy after successful generation
@@ -541,11 +576,23 @@ Be concise and actionable.`;
     }
   };
 
-  // Clear chat
-  const handleClearChat = () => {
+  // Clear chat and create new session
+  const handleClearChat = async () => {
     setChatMessages([]);
     setProposedCopy(null);
     setPrompt('');
+    setCurrentSessionImages([]); // Clear current session images
+    // Create a new session in Supabase
+    await createNewChatSession();
+  };
+
+  // Handle clicking on an image to load its chat history
+  const handleImageClick = async (image: GeneratedImage) => {
+    setSelectedImage(image);
+    // If image has a session ID, load that session's chat history
+    if (image.sessionId) {
+      await loadSessionById(image.sessionId);
+    }
   };
 
   // Confirm proposed copy
@@ -743,199 +790,17 @@ Be concise and actionable.`;
               </div>
               <span className="text-sm text-slate-500">{generatedImages.length} created</span>
             </div>
-            <GeneratedGrid images={generatedImages} isLoading={isGenerating || isLoadingImages} />
+            <GeneratedGrid 
+              images={generatedImages} 
+              isLoading={isGenerating || isLoadingImages} 
+              onImageClick={handleImageClick}
+              showSessionIndicator={true}
+            />
           </section>
         </div>
       </div>
     );
   }
-
-// =============================================
-// RENDER: Initial View (no chat started)
-// =============================================
-if (!isInChatSession) {
-  return (
-    <div className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(128,115,255,0.08),transparent_35%),radial-gradient(circle_at_80%_10%,rgba(82,196,255,0.12),transparent_32%),#f5f6fb] min-h-screen rounded-[32px]">
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute left-[15%] right-[10%] top-[-220px] h-72 rounded-full bg-gradient-to-r from-[#c6d8ff]/70 via-[#e8d8ff]/60 to-[#c4f1f9]/70 blur-3xl" />
-      </div>
-
-      <div className="relative mx-auto max-w-6xl px-4 pt-10 pb-16 md:px-10 space-y-10">
-        {/* Header */}
-        <div className="flex items-center justify-end gap-3">
-          <Button variant="outline" size="sm" className="rounded-full border-white/60 bg-white/80 backdrop-blur-xl text-slate-800 shadow-sm hover:bg-white">
-            150 Credit
-          </Button>
-          <Button size="sm" className="rounded-full bg-slate-900 text-white shadow-md shadow-slate-900/10 hover:bg-slate-800">
-            Share
-          </Button>
-        </div>
-
-        {/* Hero */}
-        <div className="text-center space-y-3">
-          <p className="text-sm text-slate-500">Good Afternoon, {displayName}</p>
-          <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-slate-900">
-            What <span className="text-purple-600">Ads</span> would you like today?
-          </h1>
-        </div>
-
-        {/* Main Prompt Box */}
-        <div className="flex justify-center">
-          <div className="w-full max-w-3xl">
-            <div className="relative">
-              <div className="absolute inset-0 rounded-[28px] bg-gradient-to-r from-[#c8b5ff] via-[#b7d8ff] to-[#6ad9ff] opacity-90" />
-              <div className="relative rounded-[26px] bg-white shadow-[0_25px_80px_-60px_rgba(15,23,42,0.55)] border border-white">
-                <textarea
-                  ref={promptInputRef}
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  rows={3}
-                  placeholder={creativeMode === 'chat' ? "Tell me about your ad idea..." : "Describe the ad you want to create..."}
-                  className="w-full min-h-[140px] resize-none rounded-[26px] border-0 bg-transparent px-5 pt-5 pb-24 text-base md:text-lg leading-relaxed text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-0"
-                />
-
-                <div className="flex items-center justify-between px-4 pb-4 -mt-14">
-                  <div className="flex items-center gap-2">
-                    <BrandPicker
-                      brandKits={brandKitOptions}
-                      analyzedBrands={analyzerProfiles}
-                      llmProfiles={llmProfiles}
-                      selectedBrandKitId={selectedBrandKitId}
-                      selectedAnalyzerId={selectedAnalyzerId}
-                      brandUrl={brandUrl}
-                      isAnalyzing={isAnalyzingBrand}
-                      analysis={activeBrand}
-                      onSelectKit={(id) => {
-                        setSelectedBrandKitId(id);
-                        setBrandMode('kit');
-                        setSelectedAnalyzerId('');
-                        setBrandAnalysis(null);
-                      }}
-                      onSelectAnalyzer={(id) => {
-                        const profile = analyzerProfiles.find((item) => item.id === id);
-                        if (!profile) return;
-                        setSelectedAnalyzerId(id);
-                        setBrandMode('analyze');
-                        setBrandAnalysis(profile.analysis);
-                        if (profile.kitId) setSelectedBrandKitId(profile.kitId);
-                      }}
-                      onAnalyze={handleAnalyzeBrand}
-                      onUrlChange={setBrandUrl}
-                      onClear={() => {
-                        setBrandMode('none');
-                        setSelectedBrandKitId('');
-                        setSelectedAnalyzerId('');
-                        setBrandAnalysis(null);
-                      }}
-                      onUploadReference={(file) => {
-                        const url = URL.createObjectURL(file);
-                        setReferenceImages((prev) => [url, ...prev].slice(0, 4));
-                      }}
-                    />
-
-                    <ModelDropdown
-                      availableApis={availableApis}
-                      mode={creativeMode}
-                      selectedChatModel={selectedChatModel}
-                      selectedImageModel={selectedImageModel}
-                      onChatModelChange={setSelectedChatModel}
-                      onImageModelChange={setSelectedImageModel}
-                    />
-
-                    {/* Mode Toggle */}
-                    <div className="flex items-center gap-1 rounded-full bg-white/80 border border-white/60 p-1">
-                      <button
-                        type="button"
-                        onClick={() => setCreativeMode('chat')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-                          creativeMode === 'chat'
-                            ? 'bg-slate-900 text-white'
-                            : 'text-slate-600 hover:bg-slate-100'
-                        }`}
-                      >
-                        <MessageSquare className="size-3.5" />
-                        Chat
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCreativeMode('make')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-                          creativeMode === 'make'
-                            ? 'bg-slate-900 text-white'
-                            : 'text-slate-600 hover:bg-slate-100'
-                        }`}
-                      >
-                        <Wand2 className="size-3.5" />
-                        Make
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      size="icon"
-                      className="h-12 w-12 rounded-[18px] bg-[#3178ff] text-white shadow-lg shadow-blue-500/20 hover:bg-[#2a6ae0]"
-                      onClick={handleSubmit}
-                      disabled={!prompt.trim() || isGenerating || isChatting}
-                    >
-                      {(isGenerating || isChatting) ? <Loader2 className="size-5 animate-spin" /> : <ArrowUpRight className="size-5" />}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="outline"
-                      className="h-11 w-11 rounded-[16px] border-white/80 bg-white/90 shadow-sm text-slate-700"
-                    >
-                      <AudioLines className="size-5" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Helper text */}
-              <p className="text-center text-xs text-slate-500 mt-3">
-                {creativeMode === 'chat' 
-                  ? 'Chat mode: Discuss your idea, AI will propose copy for you to confirm before generating.'
-                  : 'Make mode: Directly generate images from your description.'}
-                <span className="ml-2 text-slate-400">Enter to send • Shift+Enter for newline</span>
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Error */}
-        {error && (
-          <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 max-w-3xl mx-auto">
-            <AlertCircle className="w-5 h-5 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="font-medium">Error</p>
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
-            <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">
-              <X className="size-4" />
-            </button>
-          </div>
-        )}
-
-        {/* Generated Images */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-slate-900">Recent generations</h3>
-              <p className="text-sm text-slate-500">
-                {isGenerating ? 'Generating your ad...' : 'Your generated images appear here.'}
-              </p>
-            </div>
-            <span className="text-sm text-slate-500">{generatedImages.length} created</span>
-          </div>
-          <GeneratedGrid images={generatedImages} isLoading={isGenerating || isLoadingImages} />
-        </section>
-      </div>
-    </div>
-  );
-}
 
 // =============================================
 // RENDER: Chat Session View (split panel)
@@ -1012,17 +877,40 @@ return (
                     />
                   </div>
 
+                  {/* Image Overlay Preview - shows what will be added to the image */}
                   <div>
-                    <label className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1 block">
-                      Primary Text
+                    <label className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-2 block">
+                      Image Overlay Preview
                     </label>
-                    <textarea
-                      value={proposedCopy.primaryText}
-                      onChange={(e) => updateProposedCopy('primaryText', e.target.value)}
-                      rows={2}
-                      placeholder="Supporting body copy"
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-300"
-                    />
+                    <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 p-4 space-y-2">
+                      {proposedCopy.overlayElements?.map((element, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <span className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-xs font-medium ${
+                            element.type === 'headline' ? 'bg-purple-100 text-purple-700' :
+                            element.type === 'button' ? 'bg-blue-100 text-blue-700' :
+                            element.type === 'logo' ? 'bg-green-100 text-green-700' :
+                            element.type === 'badge' ? 'bg-amber-100 text-amber-700' :
+                            'bg-slate-100 text-slate-700'
+                          }`}>
+                            {element.type === 'headline' ? 'H' :
+                             element.type === 'button' ? 'B' :
+                             element.type === 'logo' ? 'L' :
+                             element.type === 'badge' ? '★' : 'T'}
+                          </span>
+                          <span className="text-sm text-slate-700 capitalize">{element.type}</span>
+                          {element.text && (
+                            <span className="text-sm text-slate-500 truncate flex-1">"{element.text}"</span>
+                          )}
+                        </div>
+                      )) || (
+                        <div className="text-sm text-slate-400 text-center py-2">
+                          No overlay elements defined yet
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1.5">
+                      These elements will be overlaid on your generated image
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">

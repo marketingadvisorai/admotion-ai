@@ -1,7 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Download, Maximize2, MoreHorizontal } from 'lucide-react';
+import { Download, Maximize2, MoreHorizontal, MessageSquare } from 'lucide-react';
 
 export interface GeneratedImage {
     id: string;
@@ -9,14 +9,19 @@ export interface GeneratedImage {
     prompt: string;
     style?: string;
     createdAt: Date;
+    sessionId?: string; // Chat session that created this image
 }
 
 interface GeneratedGridProps {
     images: GeneratedImage[];
     isLoading: boolean;
+    /** Callback when an image is clicked - receives the image and optionally loads its chat session */
+    onImageClick?: (image: GeneratedImage) => void;
+    /** Whether to show the session indicator on images */
+    showSessionIndicator?: boolean;
 }
 
-export function GeneratedGrid({ images, isLoading }: GeneratedGridProps) {
+export function GeneratedGrid({ images, isLoading, onImageClick, showSessionIndicator = false }: GeneratedGridProps) {
     if (isLoading) {
         return (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
@@ -44,7 +49,11 @@ export function GeneratedGrid({ images, isLoading }: GeneratedGridProps) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {images.map((image) => (
-                <div key={image.id} className="group relative aspect-square rounded-xl overflow-hidden border bg-card shadow-sm hover:shadow-md transition-all duration-300">
+                <div 
+                    key={image.id} 
+                    className={`group relative aspect-square rounded-xl overflow-hidden border bg-card shadow-sm hover:shadow-md transition-all duration-300 ${onImageClick ? 'cursor-pointer' : ''}`}
+                    onClick={() => onImageClick?.(image)}
+                >
                     {/* Image Placeholder or Actual Image */}
                     <div className="relative w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
                         {image.url ? (
@@ -62,16 +71,38 @@ export function GeneratedGrid({ images, isLoading }: GeneratedGridProps) {
 
                     {/* Overlay Actions */}
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2 backdrop-blur-[2px]">
-                        <Button size="icon" variant="secondary" className="rounded-full hover:scale-110 transition-transform">
+                        <Button 
+                            size="icon" 
+                            variant="secondary" 
+                            className="rounded-full hover:scale-110 transition-transform"
+                            onClick={(e) => { e.stopPropagation(); onImageClick?.(image); }}
+                        >
                             <Maximize2 className="w-4 h-4" />
                         </Button>
-                        <Button size="icon" variant="secondary" className="rounded-full hover:scale-110 transition-transform">
+                        <Button 
+                            size="icon" 
+                            variant="secondary" 
+                            className="rounded-full hover:scale-110 transition-transform"
+                            onClick={(e) => e.stopPropagation()}
+                        >
                             <Download className="w-4 h-4" />
                         </Button>
-                        <Button size="icon" variant="secondary" className="rounded-full hover:scale-110 transition-transform">
+                        <Button 
+                            size="icon" 
+                            variant="secondary" 
+                            className="rounded-full hover:scale-110 transition-transform"
+                            onClick={(e) => e.stopPropagation()}
+                        >
                             <MoreHorizontal className="w-4 h-4" />
                         </Button>
                     </div>
+
+                    {/* Session indicator - shows if image has associated chat */}
+                    {showSessionIndicator && image.sessionId && (
+                        <div className="absolute top-3 right-3 p-1.5 bg-purple-600/90 backdrop-blur-md rounded-full">
+                            <MessageSquare className="w-3 h-3 text-white" />
+                        </div>
+                    )}
 
                     {/* Badge */}
                     {image.style && (

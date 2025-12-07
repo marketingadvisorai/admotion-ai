@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Check, ChevronDown, MessageSquare, Image as ImageIcon } from 'lucide-react';
+import { Check, ChevronDown, MessageSquare, Image as ImageIcon, Video } from 'lucide-react';
 
 interface AvailableApis {
   openai: boolean;
@@ -16,6 +16,8 @@ interface ModelOption {
   provider: 'openai' | 'gemini' | 'anthropic';
 }
 
+type MediaType = 'image' | 'video';
+
 interface ModelDropdownProps {
   availableApis: AvailableApis;
   mode: 'chat' | 'make';
@@ -24,6 +26,8 @@ interface ModelDropdownProps {
   onChatModelChange: (model: string) => void;
   onImageModelChange: (model: string) => void;
   compact?: boolean;
+  /** Type of media being generated - defaults to 'image' */
+  mediaType?: MediaType;
 }
 
 // All available chat models (latest first)
@@ -45,6 +49,14 @@ const ALL_IMAGE_MODELS: ModelOption[] = [
   { value: 'dall-e-3', label: 'DALL-E 3', detail: 'OpenAI', bestFor: 'Legacy support', provider: 'openai' },
 ];
 
+// All available video generation models (latest first)
+const ALL_VIDEO_MODELS: ModelOption[] = [
+  { value: 'sora-2-pro', label: 'Sora 2 Pro', detail: 'OpenAI', bestFor: 'Highest quality (Recommended)', provider: 'openai' },
+  { value: 'sora-2', label: 'Sora 2', detail: 'OpenAI', bestFor: 'Fast generation', provider: 'openai' },
+  { value: 'veo-3.1', label: 'Veo 3.1', detail: 'Google', bestFor: 'Native audio support', provider: 'gemini' },
+  { value: 'veo-2', label: 'Veo 2', detail: 'Google', bestFor: 'Fast drafts', provider: 'gemini' },
+];
+
 export function ModelDropdown({
   availableApis,
   mode,
@@ -53,18 +65,25 @@ export function ModelDropdown({
   onChatModelChange,
   onImageModelChange,
   compact = false,
+  mediaType = 'image',
 }: ModelDropdownProps) {
   // Filter models based on available APIs
   const availableChatModels = ALL_CHAT_MODELS.filter((model) => availableApis[model.provider]);
   const availableImageModels = ALL_IMAGE_MODELS.filter((model) => availableApis[model.provider]);
+  const availableVideoModels = ALL_VIDEO_MODELS.filter((model) => availableApis[model.provider]);
 
-  // Get current selection based on mode
+  // Get current selection based on mode and media type
   const currentValue = mode === 'chat' ? selectedChatModel : selectedImageModel;
-  const currentModels = mode === 'chat' ? availableChatModels : availableImageModels;
+  const currentModels = mode === 'chat' 
+    ? availableChatModels 
+    : mediaType === 'video' 
+      ? availableVideoModels 
+      : availableImageModels;
   const onModelChange = mode === 'chat' ? onChatModelChange : onImageModelChange;
 
   const selectedOption = currentModels.find((option) => option.value === currentValue);
-  const selectedLabel = selectedOption?.label || (mode === 'chat' ? 'Chat Model' : 'Image Model');
+  const mediaLabel = mediaType === 'video' ? 'Video Model' : 'Image Model';
+  const selectedLabel = selectedOption?.label || (mode === 'chat' ? 'Chat Model' : mediaLabel);
 
   // If no models available for current mode
   if (currentModels.length === 0) {
@@ -75,7 +94,7 @@ export function ModelDropdown({
         className={`rounded-full border-white/80 bg-white/90 text-slate-500 shadow-sm cursor-not-allowed ${compact ? 'text-xs px-2 py-1 h-7' : ''}`}
         disabled
       >
-        No {mode === 'chat' ? 'chat' : 'image'} models
+        No {mode === 'chat' ? 'chat' : mediaType} models
         <ChevronDown className={`ml-1 text-slate-400 ${compact ? 'size-3' : 'size-4'}`} />
       </Button>
     );
@@ -95,8 +114,14 @@ export function ModelDropdown({
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-64">
         <DropdownMenuLabel className="flex items-center gap-2">
-          {mode === 'chat' ? <MessageSquare className="size-4" /> : <ImageIcon className="size-4" />}
-          {mode === 'chat' ? 'Chat Models' : 'Image Models'}
+          {mode === 'chat' ? (
+            <MessageSquare className="size-4" />
+          ) : mediaType === 'video' ? (
+            <Video className="size-4" />
+          ) : (
+            <ImageIcon className="size-4" />
+          )}
+          {mode === 'chat' ? 'Chat Models' : mediaType === 'video' ? 'Video Models' : 'Image Models'}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {currentModels.map((option) => (
@@ -124,7 +149,15 @@ export function ModelDropdown({
             </div>
           </>
         )}
-        {mode === 'make' && ALL_IMAGE_MODELS.length > availableImageModels.length && (
+        {mode === 'make' && mediaType === 'image' && ALL_IMAGE_MODELS.length > availableImageModels.length && (
+          <>
+            <DropdownMenuSeparator />
+            <div className="px-2 py-1.5 text-xs text-slate-400">
+              More models available with additional API keys
+            </div>
+          </>
+        )}
+        {mode === 'make' && mediaType === 'video' && ALL_VIDEO_MODELS.length > availableVideoModels.length && (
           <>
             <DropdownMenuSeparator />
             <div className="px-2 py-1.5 text-xs text-slate-400">
