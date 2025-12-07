@@ -32,8 +32,8 @@ type CreativeMode = 'chat' | 'make';
 const IMAGE_VARIANTS = [
   { value: 'gpt-image-1', label: 'GPT Image (OpenAI)', provider: 'openai', recommended: true },
   { value: 'gpt-image-1-mini', label: 'GPT Image Mini (Cost-Saving)', provider: 'openai', recommended: false },
-  { value: 'imagen-3', label: 'Imagen 3 (Google)', provider: 'gemini', recommended: true },
-  { value: 'imagen-3-fast', label: 'Imagen 3 Fast (Google)', provider: 'gemini', recommended: false },
+  { value: 'nano-banana-pro', label: 'Nano Banana Pro (Gemini 3 Pro)', provider: 'gemini', recommended: true },
+  { value: 'nano-banana', label: 'Nano Banana (Gemini 2.5 Flash)', provider: 'gemini', recommended: false },
   { value: 'dall-e-3', label: 'DALL·E 3 (Legacy)', provider: 'openai', recommended: false },
 ];
 
@@ -97,7 +97,7 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
   const [isLoadingImages, setIsLoadingImages] = useState(true);
 
   // Model selection - default to latest models
-  const [selectedChatModel, setSelectedChatModel] = useState<string>('gpt-4o');
+  const [selectedChatModel, setSelectedChatModel] = useState<string>('gpt-5.1');
   const [selectedImageModel, setSelectedImageModel] = useState<string>('gpt-image-1');
   const [variantImageModels, setVariantImageModels] = useState<string[]>([]);
   const [availableApis, setAvailableApis] = useState<AvailableApis>({
@@ -173,11 +173,11 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
           setAvailableApis(data.apis);
           // Set latest models based on available APIs
           if (data.apis.openai) {
-            setSelectedChatModel('gpt-4o');
+            setSelectedChatModel('gpt-5.1'); // Latest OpenAI chat model
             setSelectedImageModel('gpt-image-1'); // Latest OpenAI image model
           } else if (data.apis.gemini) {
-            setSelectedChatModel('gemini-pro');
-            setSelectedImageModel('imagen-3'); // Latest Google image model
+            setSelectedChatModel('gemini-3-pro'); // Latest Google chat model
+            setSelectedImageModel('nano-banana-pro'); // Nano Banana Pro (Gemini 3 Pro Image)
           }
         }
       } catch (err) {

@@ -354,9 +354,9 @@ function resolveModel(input: ImageGenerationInput): { provider: ImageProvider; m
         return { provider, model: input.model };
     }
     
-    // Default to gpt-image-1 (best quality)
+    // Default to gpt-image-1 (OpenAI) or nano-banana-pro (Gemini)
     if (input.provider === 'gemini') {
-        return { provider: 'gemini', model: 'imagen-3' };
+        return { provider: 'gemini', model: 'nano-banana-pro' }; // Gemini 3 Pro Image
     }
     
     return { provider: 'openai', model: 'gpt-image-1' };

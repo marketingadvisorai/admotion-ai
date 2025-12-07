@@ -26,20 +26,22 @@ interface ModelDropdownProps {
   compact?: boolean;
 }
 
-// All available chat models
+// All available chat models (latest first)
 const ALL_CHAT_MODELS: ModelOption[] = [
-  { value: 'gpt-4o', label: 'GPT-4o', detail: 'OpenAI', bestFor: 'Best for ideas', provider: 'openai' },
-  { value: 'gpt-4o-mini', label: 'GPT-4o Mini', detail: 'OpenAI', bestFor: 'Fast & efficient', provider: 'openai' },
+  { value: 'gpt-5.1', label: 'GPT-5.1', detail: 'OpenAI', bestFor: 'Best quality (Recommended)', provider: 'openai' },
+  { value: 'gpt-5.1-mini', label: 'GPT-5.1 Mini', detail: 'OpenAI', bestFor: 'Fast & efficient', provider: 'openai' },
+  { value: 'gemini-3-pro', label: 'Gemini 3 Pro', detail: 'Google', bestFor: 'Best quality (Recommended)', provider: 'gemini' },
+  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', detail: 'Google', bestFor: 'Fast & multimodal', provider: 'gemini' },
   { value: 'claude-3.5', label: 'Claude 3.5', detail: 'Anthropic', bestFor: 'Creative writing', provider: 'anthropic' },
-  { value: 'gemini-pro', label: 'Gemini Pro', detail: 'Google', bestFor: 'Multimodal', provider: 'gemini' },
+  { value: 'gpt-4o', label: 'GPT-4o', detail: 'OpenAI', bestFor: 'Legacy support', provider: 'openai' },
 ];
 
 // All available image generation models (latest first)
 const ALL_IMAGE_MODELS: ModelOption[] = [
   { value: 'gpt-image-1', label: 'GPT Image', detail: 'OpenAI', bestFor: 'Best quality (Recommended)', provider: 'openai' },
   { value: 'gpt-image-1-mini', label: 'GPT Image Mini', detail: 'OpenAI', bestFor: 'Cost-saving mode', provider: 'openai' },
-  { value: 'imagen-3', label: 'Imagen 3', detail: 'Google', bestFor: 'Photorealistic (Recommended)', provider: 'gemini' },
-  { value: 'imagen-3-fast', label: 'Imagen 3 Fast', detail: 'Google', bestFor: 'Fast generation', provider: 'gemini' },
+  { value: 'nano-banana-pro', label: 'Nano Banana Pro', detail: 'Google', bestFor: 'Highest quality (Gemini 3 Pro)', provider: 'gemini' },
+  { value: 'nano-banana', label: 'Nano Banana', detail: 'Google', bestFor: 'Fast drafts (Gemini 2.5 Flash)', provider: 'gemini' },
   { value: 'dall-e-3', label: 'DALL-E 3', detail: 'OpenAI', bestFor: 'Legacy support', provider: 'openai' },
 ];
 

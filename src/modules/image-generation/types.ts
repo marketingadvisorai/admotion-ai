@@ -10,8 +10,15 @@
 export type ImageProvider = 'openai' | 'gemini';
 
 export type OpenAIImageModel = 'gpt-image-1' | 'gpt-image-1-mini' | 'dall-e-3';
-export type GeminiImageModel = 'imagen-3' | 'imagen-3-fast' | 'gemini-2.0-flash';
+// Nano Banana Pro = Gemini 3 Pro Image (highest quality)
+// Nano Banana = Gemini 2.5 Flash (fast drafts)
+export type GeminiImageModel = 'nano-banana-pro' | 'nano-banana' | 'imagen-3' | 'imagen-3-fast' | 'gemini-2.0-flash';
 export type ImageModel = OpenAIImageModel | GeminiImageModel;
+
+// Chat models
+export type OpenAIChatModel = 'gpt-5.1' | 'gpt-5.1-mini' | 'gpt-4o' | 'gpt-4o-mini';
+export type GeminiChatModel = 'gemini-3-pro' | 'gemini-2.5-flash' | 'gemini-pro';
+export type ChatModel = OpenAIChatModel | GeminiChatModel;
 
 export type ImageAspectRatio = '1:1' | '4:5' | '3:2' | '2:3' | '16:9' | '9:16';
 export type ImageQuality = 'low' | 'medium' | 'high' | 'auto';
