@@ -25,7 +25,7 @@ export function NewBrandKitDialog({ orgId }: NewBrandKitDialogProps) {
                     New Brand Kit
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="w-[95vw] max-w-5xl md:max-w-6xl max-h-[90vh] overflow-y-auto p-0">
                 <BrandKitWizard
                     orgId={orgId}
                     onComplete={() => setOpen(false)}

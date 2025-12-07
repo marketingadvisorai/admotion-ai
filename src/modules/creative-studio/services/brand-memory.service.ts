@@ -196,3 +196,19 @@ export async function initBrandMemoryFromKit(orgId: string, brandKitId: string):
         fatigued_styles: [],
     });
 }
+
+/**
+ * Delete a specific brand memory record
+ */
+export async function deleteBrandMemory(orgId: string, memoryId: string): Promise<void> {
+    const supabase = await createClient();
+    const { error } = await supabase
+        .from('brand_memories')
+        .delete()
+        .eq('org_id', orgId)
+        .eq('id', memoryId);
+
+    if (error) {
+        throw new Error(error.message);
+    }
+}

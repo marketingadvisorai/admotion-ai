@@ -105,6 +105,28 @@ export function extractLogoCandidates($: cheerio.CheerioAPI, baseUrl: string, js
         jsonLdLogo,
     ].filter(Boolean) as string[];
 
+    const headerLogos = $('header img').map((_, el) => {
+        const src = $(el).attr('src');
+        const alt = ($(el).attr('alt') || '').toLowerCase();
+        const className = ($(el).attr('class') || '').toLowerCase();
+        const id = ($(el).attr('id') || '').toLowerCase();
+        if (src && (alt.includes('logo') || className.includes('logo') || id.includes('logo') || src.toLowerCase().includes('logo'))) {
+            return toAbsolute(src, baseUrl);
+        }
+        return null;
+    }).get().filter(Boolean);
+
+    const footerLogos = $('footer img').map((_, el) => {
+        const src = $(el).attr('src');
+        const alt = ($(el).attr('alt') || '').toLowerCase();
+        const className = ($(el).attr('class') || '').toLowerCase();
+        const id = ($(el).attr('id') || '').toLowerCase();
+        if (src && (alt.includes('logo') || className.includes('logo') || id.includes('logo') || src.toLowerCase().includes('logo'))) {
+            return toAbsolute(src, baseUrl);
+        }
+        return null;
+    }).get().filter(Boolean);
+
     const imgLogos = $('img').map((_, el) => {
         const src = $(el).attr('src');
         const alt = ($(el).attr('alt') || '').toLowerCase();
@@ -117,17 +139,35 @@ export function extractLogoCandidates($: cheerio.CheerioAPI, baseUrl: string, js
         return null;
     }).get().filter(Boolean);
 
-    const all = Array.from(new Set([...iconLinks.map((l) => toAbsolute(l, baseUrl)), ...imgLogos])).slice(0, MAX_LOGOS);
+    // Prioritize header > footer > explicit icon/meta tags > any other logo-like imgs
+    const all = Array.from(new Set([
+        ...headerLogos,
+        ...footerLogos,
+        ...iconLinks.map((l) => toAbsolute(l, baseUrl)),
+        ...imgLogos,
+    ])).slice(0, MAX_LOGOS);
     return all;
 }
 
-export function extractColors($: cheerio.CheerioAPI, themeColor?: string) {
+export function extractColors($: cheerio.CheerioAPI, themeColor?: string, extraCss?: string) {
     const styles = $('style').map((_, el) => $(el).html() || '').get().join('\n');
     const inline = $('[style]').map((_, el) => $(el).attr('style') || '').get().join('\n');
+    const cssBundle = [styles, inline, extraCss || ''].join('\n');
     const hexRegex = /#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})/g;
-    const matches = [...styles.matchAll(hexRegex), ...inline.matchAll(hexRegex)].map((m) => m[0].toUpperCase());
+    const matches = [...cssBundle.matchAll(hexRegex)].map((m) => m[0].toUpperCase());
 
-    const uniques = Array.from(new Set([...(themeColor ? [themeColor.toUpperCase()] : []), ...matches])).slice(0, MAX_COLORS);
+    // Count frequency to prioritize dominant colors
+    const freq = new Map<string, number>();
+    matches.forEach((hex) => {
+        freq.set(hex, (freq.get(hex) || 0) + 1);
+    });
+
+    const sorted = Array.from(freq.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([hex]) => hex);
+
+    const withTheme = themeColor ? [themeColor.toUpperCase(), ...sorted] : sorted;
+    const uniques = Array.from(new Set(withTheme)).slice(0, MAX_COLORS);
 
     return uniques.map((value, idx) => ({
         name: idx === 0 ? 'Primary' : idx === 1 ? 'Secondary' : `Accent ${idx}`,

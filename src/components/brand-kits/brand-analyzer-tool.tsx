@@ -7,18 +7,44 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { analyzeBrandAction, createBrandKitAction, updateBrandKitAction } from '@/modules/brand-kits/actions';
+import { analyzeBrandAction, createBrandKitAction, updateBrandKitAction, createBrandKitAndMemoryFromUrlAction, updateBrandKitAndMemoryFromUrlAction, deleteBrandKitAction } from '@/modules/brand-kits/actions';
 import { toast } from 'sonner';
 import { normalizeUrl, isValidUrl } from '@/lib/url-utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BrandKnowledgeBase } from './brand-knowledge-base';
 import { ColorPicker } from '@/components/ui/color-picker';
 import { BrandKit } from '@/modules/brand-kits/types';
+import { BrandMemory } from '@/modules/creative-studio/types';
 import { useRouter } from 'next/navigation';
+import { useActionState } from 'react';
 
 interface BrandAnalyzerToolProps {
     orgId: string;
     brandKits?: BrandKit[];
+}
+
+function DeleteAnalysisButton({ kitId, onDeleted }: { kitId: string; onDeleted?: () => void }) {
+    const [state, formAction, pending] = useActionState(async (_prev: any, formData: FormData) => {
+        const id = formData.get('kitId') as string;
+        const res = await deleteBrandKitAction(id);
+        if (res.success && onDeleted) onDeleted();
+        return res;
+    }, null);
+
+    return (
+        <form action={formAction}>
+            <input type="hidden" name="kitId" value={kitId} />
+            <Button
+                type="submit"
+                variant="ghost"
+                size="icon-sm"
+                className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                disabled={pending}
+            >
+                <RefreshCw className={`w-4 h-4 ${pending ? 'animate-spin' : ''}`} />
+            </Button>
+        </form>
+    );
 }
 
 export function BrandAnalyzerTool({ orgId, brandKits = [] }: BrandAnalyzerToolProps) {
@@ -29,6 +55,10 @@ export function BrandAnalyzerTool({ orgId, brandKits = [] }: BrandAnalyzerToolPr
     const [isSaving, setIsSaving] = useState(false);
     const [result, setResult] = useState<any>(null);
     const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+    const [savedKit, setSavedKit] = useState<BrandKit | null>(null);
+    const [savedMemory, setSavedMemory] = useState<BrandMemory | null>(null);
+    const [syncKitId, setSyncKitId] = useState<string>('new');
+    const [isSyncingMemory, setIsSyncingMemory] = useState(false);
 
     // Reset state when selection changes
     useEffect(() => {
@@ -61,19 +91,31 @@ export function BrandAnalyzerTool({ orgId, brandKits = [] }: BrandAnalyzerToolPr
         setIsAnalyzing(true);
         setAnalyzeError(null);
 
-        // If analyzing for a new kit, clear previous result temporarily
-        if (selectedKitId === 'new') {
-            setResult(null);
-        }
-
         try {
-            const response = await analyzeBrandAction(normalizedUrl, orgId);
+            // Run full flow:
+            // - New selection: analyze -> create brand kit -> create brand memory
+            // - Existing selection: analyze -> update brand kit -> refresh brand memory
+            const response =
+                selectedKitId === 'new'
+                    ? await createBrandKitAndMemoryFromUrlAction(normalizedUrl, orgId)
+                    : await updateBrandKitAndMemoryFromUrlAction(selectedKitId, normalizedUrl, orgId);
+
             if (response.success && response.data) {
-                setResult(response.data);
-                toast.success('Analysis complete!');
+                const analysis = response.data.analysis || response.data;
+                setResult(analysis);
+                setSavedKit((response.data as any).kit || null);
+                setSavedMemory((response.data as any).brandMemory || null);
+                setSyncKitId(((response.data as any).kit?.id as string) || selectedKitId || 'new');
+                toast.success(
+                    selectedKitId === 'new'
+                        ? 'Analysis complete. Brand kit and memory saved.'
+                        : 'Analysis updated. Brand kit and memory refreshed.'
+                );
+                router.refresh();
             } else {
-                setAnalyzeError(response.error || 'Analysis failed');
-                toast.error(response.error || 'Analysis failed');
+                const errMsg = !response.success && (response as any)?.error ? (response as any).error : 'Analysis failed';
+                setAnalyzeError(errMsg);
+                toast.error(errMsg);
             }
         } catch (error: any) {
             setAnalyzeError(error.message || 'An unexpected error occurred');
@@ -111,6 +153,32 @@ export function BrandAnalyzerTool({ orgId, brandKits = [] }: BrandAnalyzerToolPr
         }
     };
 
+    const handleSyncBrandMemory = async () => {
+        if (!syncKitId || syncKitId === 'new') {
+            toast.error('Select a brand kit to sync into Brand Memory.');
+            return;
+        }
+        setIsSyncingMemory(true);
+        try {
+            const res = await fetch('/api/brand-memory/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orgId, brandKitId: syncKitId }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setSavedMemory(data.brandMemory);
+                toast.success('Brand memory synced to selected kit.');
+            } else {
+                throw new Error(data.error || 'Sync failed');
+            }
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to sync brand memory');
+        } finally {
+            setIsSyncingMemory(false);
+        }
+    };
+
     const handleUpdateKit = async () => {
         if (!result || selectedKitId === 'new') return;
         setIsSaving(true);
@@ -138,6 +206,79 @@ export function BrandAnalyzerTool({ orgId, brandKits = [] }: BrandAnalyzerToolPr
 
     return (
         <div className="space-y-8 w-full">
+            {/* Saved analyses grid */}
+            {brandKits.length > 0 && (
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-gray-700">Saved Analyses</h3>
+                        <p className="text-xs text-gray-500">Select to load into the analyzer or delete.</p>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {brandKits.map((kit) => {
+                            const primaryColor = kit.colors.find(c => c.type === 'primary')?.value || '#111827';
+                            const secondaryColor = kit.colors.find(c => c.type === 'secondary')?.value || '#f3f4f6';
+                            return (
+                                <div
+                                    key={kit.id}
+                                    className="relative rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden"
+                                >
+                                    <div className="absolute inset-x-0 top-0 h-20 opacity-70" style={{ background: `linear-gradient(120deg, ${primaryColor}, ${secondaryColor})` }} />
+                                    <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-white/10 to-white" />
+                                    <div className="relative p-4 space-y-3">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div>
+                                                <p className="text-xs uppercase text-gray-400">Analysis</p>
+                                                <h4 className="text-lg font-semibold text-gray-900 line-clamp-1">{kit.business_name || kit.name}</h4>
+                                                <p className="text-xs text-gray-500 line-clamp-2">{kit.description}</p>
+                                            </div>
+                                            <DeleteAnalysisButton kitId={kit.id} onDeleted={() => router.refresh()} />
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs text-gray-600">
+                                            <span className="px-2 py-1 rounded-lg bg-gray-100">{kit.fonts.heading}</span>
+                                            <span className="px-2 py-1 rounded-lg bg-gray-100">{kit.fonts.body}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {kit.colors.slice(0, 3).map((c, idx) => (
+                                                <div key={idx} className="flex items-center gap-1">
+                                                    <span className="h-3 w-3 rounded-full border" style={{ backgroundColor: c.value }} />
+                                                    <span className="text-[11px] text-gray-500">{c.name}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="text-xs"
+                                                onClick={() => {
+                                                    setSelectedKitId(kit.id);
+                                                    setResult(kit);
+                                                    setUrl(kit.website_url || '');
+                                                }}
+                                            >
+                                                Load
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                className="text-xs"
+                                                onClick={() => {
+                                                    setSelectedKitId(kit.id);
+                                                    setResult(kit);
+                                                    setUrl(kit.website_url || '');
+                                                    handleAnalyze();
+                                                }}
+                                            >
+                                                Re-Analyze
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
                 <div className="md:col-span-4 space-y-2">
                     <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Select Source</Label>

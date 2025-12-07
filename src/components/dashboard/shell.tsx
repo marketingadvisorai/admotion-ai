@@ -87,7 +87,7 @@ export function DashboardShell({ user, orgs, signOutAction, children }: Dashboar
 
         <main
           className={cn(
-            'min-h-screen pb-12 px-4',
+            'min-h-screen pb-12 px-4 pt-8 md:pt-12',
             isSidebarOpen && !isMobile ? 'md:pl-28 md:pr-8' : 'md:px-8'
           )}
         >

@@ -23,16 +23,22 @@ import { BrandMemory, StyleTokens, VoiceRules } from '@/modules/creative-studio/
 interface BrandMemoryPanelProps {
     orgId: string;
     brandMemory: BrandMemory | null;
+    brandMemories?: BrandMemory[];
     onSave: (updates: Partial<BrandMemory>) => Promise<void>;
     onSync: () => Promise<void>;
+    onDelete?: (id: string) => Promise<void>;
+    onSelectMemory?: (memory: BrandMemory) => void;
     isSyncing?: boolean;
 }
 
 export function BrandMemoryPanel({ 
     orgId, 
     brandMemory, 
+    brandMemories = [],
     onSave, 
     onSync,
+    onDelete,
+    onSelectMemory,
     isSyncing = false 
 }: BrandMemoryPanelProps) {
     const [isEditing, setIsEditing] = useState(false);
@@ -124,6 +130,59 @@ export function BrandMemoryPanel({
 
     return (
         <div className="space-y-8">
+            {/* Memory list */}
+            {brandMemories.length > 0 && (
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold text-gray-700">Saved Brand Memories</h4>
+                        <Button variant="ghost" size="sm" onClick={onSync} disabled={isSyncing}>
+                            <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+                            Sync from Kit
+                        </Button>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {brandMemories.map((memory) => (
+                            <div
+                                key={memory.id}
+                                className={`p-4 rounded-2xl border ${brandMemory?.id === memory.id ? 'border-indigo-200 bg-indigo-50/60' : 'border-gray-100 bg-white'} shadow-sm flex flex-col gap-3`}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Badge variant="outline" className="text-[10px]">
+                                            v{memory.version}
+                                        </Badge>
+                                        <span className="text-sm font-semibold text-gray-900 line-clamp-1">{memory.brand_name || 'Untitled'}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 px-2 text-xs"
+                                            onClick={() => onSelectMemory?.(memory)}
+                                        >
+                                            Load
+                                        </Button>
+                                        {onDelete && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon-sm"
+                                                className="h-7 w-7 text-gray-400 hover:text-red-500"
+                                                onClick={() => onDelete(memory.id)}
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="text-xs text-gray-500 line-clamp-2">
+                                    {memory.voice_rules?.tone || 'No tone set'}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">

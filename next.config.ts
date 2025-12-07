@@ -15,6 +15,15 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.supabase.co",
       },
+      // Allow brand kit assets from optimized external sites
+      {
+        protocol: "https",
+        hostname: "optimalescape.com",
+      },
+      {
+        protocol: "https",
+        hostname: "www.optimalescape.com",
+      },
     ],
   },
 };

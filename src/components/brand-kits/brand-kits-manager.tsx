@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Palette, Sparkles } from 'lucide-react';
+import { Brain, Palette, Sparkles, LayoutGrid } from 'lucide-react';
 import BrandKitList from './brand-kit-list';
 import { NewBrandKitDialog } from './new-brand-kit-dialog';
 import { BrandAnalyzerTool } from './brand-analyzer-tool';
@@ -19,8 +19,10 @@ interface BrandKitsManagerProps {
 
 export function BrandKitsManager({ brandKits, orgId, initialBrandMemory = null }: BrandKitsManagerProps) {
     const [brandMemory, setBrandMemory] = useState<BrandMemory | null>(initialBrandMemory);
+    const [brandMemories, setBrandMemories] = useState<BrandMemory[]>([]);
     const [isSyncing, setIsSyncing] = useState(false);
-    const [activeTab, setActiveTab] = useState('kits');
+    // Default to analyzer as first tab per new order
+    const [activeTab, setActiveTab] = useState('analyzer');
 
     // Fetch brand memory on mount
     useEffect(() => {
@@ -30,6 +32,12 @@ export function BrandKitsManager({ brandKits, orgId, initialBrandMemory = null }
                 const data = await res.json();
                 if (data.success && data.brandMemory) {
                     setBrandMemory(data.brandMemory);
+                }
+                // Fetch all versions for listing/deletion
+                const resAll = await fetch(`/api/brand-memory?orgId=${orgId}&all=true`);
+                const dataAll = await resAll.json();
+                if (dataAll.success && dataAll.brandMemories) {
+                    setBrandMemories(dataAll.brandMemories);
                 }
             } catch (err) {
                 console.error('Failed to fetch brand memory:', err);
@@ -80,6 +88,12 @@ export function BrandKitsManager({ brandKits, orgId, initialBrandMemory = null }
             const data = await res.json();
             if (data.success) {
                 setBrandMemory(data.brandMemory);
+                // refresh list
+                const resAll = await fetch(`/api/brand-memory?orgId=${orgId}&all=true`);
+                const dataAll = await resAll.json();
+                if (dataAll.success && dataAll.brandMemories) {
+                    setBrandMemories(dataAll.brandMemories);
+                }
             } else {
                 throw new Error(data.error);
             }
@@ -89,10 +103,38 @@ export function BrandKitsManager({ brandKits, orgId, initialBrandMemory = null }
         }
     }, [orgId]);
 
+    const handleDeleteBrandMemory = useCallback(async (memoryId: string) => {
+        try {
+            const res = await fetch(`/api/brand-memory?id=${memoryId}&orgId=${orgId}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to delete brand memory');
+            }
+            setBrandMemories((prev) => prev.filter((m) => m.id !== memoryId));
+            if (brandMemory?.id === memoryId) {
+                setBrandMemory(null);
+            }
+        } catch (err) {
+            console.error('Delete brand memory failed:', err);
+            alert('Failed to delete brand memory. Please try again.');
+        }
+    }, [orgId, brandMemory]);
+
     return (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                    <LayoutGrid className="w-5 h-5 text-indigo-600" />
+                    <h1 className="text-xl font-bold text-gray-900">BrandPro 2.0</h1>
+                </div>
                 <TabsList className="p-1 bg-gray-100/50 backdrop-blur-md rounded-2xl border border-white/20 h-auto">
+                    <TabsTrigger 
+                        value="analyzer" 
+                        className="px-6 py-2.5 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 transition-all duration-300 flex items-center gap-2"
+                    >
+                        <Sparkles className="w-4 h-4" />
+                        Brand Analyzer
+                    </TabsTrigger>
                     <TabsTrigger 
                         value="kits" 
                         className="px-6 py-2.5 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 transition-all duration-300 flex items-center gap-2"
@@ -112,16 +154,13 @@ export function BrandKitsManager({ brandKits, orgId, initialBrandMemory = null }
                             </Badge>
                         )}
                     </TabsTrigger>
-                    <TabsTrigger 
-                        value="analyzer" 
-                        className="px-6 py-2.5 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 transition-all duration-300 flex items-center gap-2"
-                    >
-                        <Sparkles className="w-4 h-4" />
-                        Analyzer
-                    </TabsTrigger>
                 </TabsList>
                 {activeTab === 'kits' && <NewBrandKitDialog orgId={orgId} />}
             </div>
+
+            <TabsContent value="analyzer" className="mt-0">
+                <BrandAnalyzerTool orgId={orgId} brandKits={brandKits} />
+            </TabsContent>
 
             <TabsContent value="kits" className="mt-0">
                 <div className="mb-8">
@@ -141,14 +180,12 @@ export function BrandKitsManager({ brandKits, orgId, initialBrandMemory = null }
                 <BrandMemoryPanel
                     orgId={orgId}
                     brandMemory={brandMemory}
+                    brandMemories={brandMemories}
                     onSave={handleSaveBrandMemory}
                     onSync={handleSyncBrandMemory}
+                    onDelete={handleDeleteBrandMemory}
                     isSyncing={isSyncing}
                 />
-            </TabsContent>
-
-            <TabsContent value="analyzer" className="mt-0">
-                <BrandAnalyzerTool orgId={orgId} brandKits={brandKits} />
             </TabsContent>
         </Tabs>
     );

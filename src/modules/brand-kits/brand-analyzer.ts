@@ -6,6 +6,7 @@ import {
     extractLogoCandidates,
     extractParagraphs,
     extractSocialLinks,
+    toAbsolute,
     normalizeUrl,
     parseJsonLd,
 } from './scraper';
@@ -16,6 +17,7 @@ export interface BrandIdentity {
     business_name: string;
     description: string;
     logo_url?: string;
+    logo_candidates?: string[];
     colors: Array<{ name: string; value: string; type: 'primary' | 'secondary' | 'accent' }>;
     fonts: { heading: string; body: string };
     social_links: { [key: string]: string };
@@ -144,7 +146,33 @@ export class BrandAnalyzer {
 
             const socialLinks = extractSocialLinks($, baseUrl, jsonLd.sameAs);
             const logoCandidates = extractLogoCandidates($, baseUrl, jsonLd.logo);
-            const colorPalette = extractColors($, themeColor);
+            // Pull a small sample of external CSS to improve color detection
+            let externalCss = '';
+            try {
+                const stylesheetHrefs = $('link[rel="stylesheet"], link[rel="preload"][as="style"]')
+                    .map((_, el) => $(el).attr('href'))
+                    .get()
+                    .filter(Boolean)
+                    .slice(0, 3) as string[];
+
+                const cssResponses = await Promise.all(
+                    stylesheetHrefs.map(async (href) => {
+                        try {
+                            const cssUrl = toAbsolute(href, baseUrl);
+                            const res = await fetch(cssUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+                            if (res.ok) return await res.text();
+                        } catch {
+                            return '';
+                        }
+                        return '';
+                    })
+                );
+                externalCss = cssResponses.filter(Boolean).join('\n');
+            } catch {
+                externalCss = '';
+            }
+
+            const colorPalette = extractColors($, themeColor, externalCss);
             const headings = extractHeadings($);
             const paragraphs = extractParagraphs($);
 
@@ -213,6 +241,9 @@ export class BrandAnalyzer {
                 business_name: result.business_name || title || 'Unknown Business',
                 description: result.description || metaDescription || '',
                 logo_url: result.logo_url || logoCandidates[0] || '',
+                logo_candidates: Array.isArray(result.logo_candidates) && result.logo_candidates.length
+                    ? result.logo_candidates
+                    : logoCandidates,
                 colors: sanitizedColors.length ? sanitizedColors : colorPalette,
                 fonts: result.fonts || { heading: 'Inter', body: 'Inter' },
                 social_links: result.social_links || socialLinks,

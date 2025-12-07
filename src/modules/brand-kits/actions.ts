@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/db/server';
 import { BrandAnalyzer, BrandIdentity } from './brand-analyzer';
 import { revalidatePath } from 'next/cache';
+import { initBrandMemoryFromKit } from '../creative-studio/services/brand-memory.service';
 
 export async function analyzeBrandAction(url: string, orgId?: string, model?: string) {
     try {
@@ -26,6 +27,70 @@ export async function analyzeBrandAction(url: string, orgId?: string, model?: st
         return { success: true, data: brandIdentity };
     } catch (error: any) {
         return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Analyze a URL, create a brand kit, and initialize brand memory from that kit.
+ */
+export async function createBrandKitAndMemoryFromUrlAction(url: string, orgId: string, model?: string) {
+    const baseResult = await createBrandKitFromUrlAction(url, orgId, model);
+    if (!baseResult.success || !baseResult.data?.kit) {
+        return baseResult;
+    }
+
+    try {
+        const memory = await initBrandMemoryFromKit(orgId, baseResult.data.kit.id);
+        return { success: true, data: { ...baseResult.data, brandMemory: memory } };
+    } catch (error: any) {
+        console.error('initBrandMemoryFromKit failed:', error);
+        return { success: false, error: error.message || 'Failed to create brand memory' };
+    }
+}
+
+/**
+ * Re-analyze an existing kit, update it, and refresh brand memory.
+ */
+export async function updateBrandKitAndMemoryFromUrlAction(kitId: string, url: string, orgId: string, model?: string) {
+    try {
+        const analysisResult = await analyzeBrandAction(url, orgId, model);
+        if (!analysisResult.success || !analysisResult.data) {
+            return { success: false, error: analysisResult.error || 'Analysis failed' };
+        }
+        const identity = analysisResult.data as BrandIdentity;
+
+        // Update kit with latest analysis
+        const supabase = await createClient();
+        const { data: kit, error } = await supabase
+            .from('brand_kits')
+            .update({
+                website_url: url,
+                business_name: identity.business_name,
+                description: identity.description,
+                locations: identity.locations || [],
+                colors: identity.colors || [],
+                fonts: identity.fonts || { heading: 'Inter', body: 'Inter' },
+                social_links: identity.social_links || {},
+                offerings: identity.offerings || [],
+                strategy: identity.strategy || {},
+                logo_url: identity.logo_url,
+            })
+            .eq('id', kitId)
+            .select()
+            .single();
+
+        if (error || !kit) {
+            return { success: false, error: error?.message || 'Failed to update brand kit' };
+        }
+
+        // Refresh brand memory from updated kit
+        const memory = await initBrandMemoryFromKit(orgId, kitId);
+
+        revalidatePath(`/dashboard/${orgId}/brand-kits`);
+        return { success: true, data: { kit, analysis: identity, brandMemory: memory } };
+    } catch (error: any) {
+        console.error('updateBrandKitAndMemoryFromUrlAction failed:', error);
+        return { success: false, error: error.message || 'Failed to update brand kit and memory' };
     }
 }
 
