@@ -18,7 +18,7 @@ import {
 import { BrandPicker, BrandMode, AnalyzedBrandProfile } from '@/components/ads/brand-picker';
 import { ModelDropdown } from '@/components/ads/model-dropdown';
 import { GeneratedGrid, GeneratedImage } from './generated-grid';
-import { useChatSession } from './use-chat-session';
+import { useChatSession, ChatSessionData } from './use-chat-session';
 import { BrandKit } from '@/modules/brand-kits/types';
 import { LlmProfile } from '@/modules/llm/types';
 import { ImageGeneration, ImageAspectRatio } from '@/modules/image-generation/types';
@@ -138,36 +138,34 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
   
   const chatEndRef = useRef<HTMLDivElement>(null);
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
+  const userStartedChatRef = useRef(false);
 
-  // Derived state - show split view only when user has started chatting
-  const isInChatSession = chatMessages.length > 0;
+  // Derived state - show split view only when user has started chatting or loaded a session
+  const isInChatSession = userStartedChatRef.current && (chatMessages.length > 0 || proposedCopy !== null);
 
   // Track current session images (images created in this session only)
   const [currentSessionImages, setCurrentSessionImages] = useState<GeneratedImage[]>([]);
   
-  // Track if user explicitly entered chat (vs auto-loaded session)
-  const [userStartedChat, setUserStartedChat] = useState(false);
-  
   // Chat session persistence to Supabase (10-day retention)
   const { sessionId, saveSession, createNewSession: createNewChatSession, loadSessionById, isLoading: isSessionLoading } = useChatSession({
     orgId,
-    onSessionLoaded: (session) => {
-      // Only restore session if user explicitly loaded it (clicked history)
-      if (userStartedChat) {
-        if (session.messages?.length) {
-          setChatMessages(session.messages);
-        }
-        if (session.proposedCopy) {
-          setProposedCopy(session.proposedCopy);
-        }
-        if (session.brandKitId) {
-          setSelectedBrandKitId(session.brandKitId);
-        }
-        if (session.selectedModels) {
-          setSelectedChatModel(session.selectedModels.chatModel);
-          setSelectedImageModel(session.selectedModels.imageModel);
-          setVariantImageModels(session.selectedModels.variantModels);
-        }
+    onSessionLoaded: (session: ChatSessionData) => {
+      // Restore session data - the hook now handles localStorage backup
+      // so we always restore to ensure consistency
+      if (session.messages?.length) {
+        setChatMessages(session.messages);
+        userStartedChatRef.current = true; // Mark as started if we have messages
+      }
+      if (session.proposedCopy) {
+        setProposedCopy(session.proposedCopy);
+      }
+      if (session.brandKitId) {
+        setSelectedBrandKitId(session.brandKitId);
+      }
+      if (session.selectedModels) {
+        setSelectedChatModel(session.selectedModels.chatModel);
+        setSelectedImageModel(session.selectedModels.imageModel);
+        setVariantImageModels(session.selectedModels.variantModels);
       }
     },
   });
@@ -349,7 +347,7 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
     if (!prompt.trim()) return;
     
     // Mark that user started chatting (enables split view)
-    setUserStartedChat(true);
+    userStartedChatRef.current = true;
     setIsChatting(true);
     setError(null);
     
@@ -601,7 +599,7 @@ Be concise and actionable.`;
     setProposedCopy(null);
     setPrompt('');
     setCurrentSessionImages([]);
-    setUserStartedChat(false); // Return to initial view
+    userStartedChatRef.current = false; // Return to initial view
     setSelectedImage(null);
     // Create a new session in Supabase
     await createNewChatSession();
@@ -612,14 +610,14 @@ Be concise and actionable.`;
     setSelectedImage(image);
     // If image has a session ID, load that session's chat history
     if (image.sessionId) {
-      setUserStartedChat(true); // Mark that user explicitly loaded a session
+      userStartedChatRef.current = true; // Mark that user explicitly loaded a session
       await loadSessionById(image.sessionId);
     }
   };
   
   // Handle loading a session from history
   const handleLoadSession = async (targetSessionId: string) => {
-    setUserStartedChat(true);
+    userStartedChatRef.current = true;
     await loadSessionById(targetSessionId);
   };
 
