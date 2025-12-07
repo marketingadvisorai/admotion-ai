@@ -308,14 +308,18 @@ async function generateSingleAsset(input: {
                 prompt,
                 aspectRatio: aspect_ratio,
                 numberOfImages: 1,
-                quality: 'hd',
-                style: 'vivid',
+                quality: 'high',
+                model: 'gpt-image-1',
             });
-            if (!result.urls.length) throw new Error('No image generated');
+            if (!result.urls.length && !result.base64Images?.length) throw new Error('No image generated');
             
-            // Upload to storage
+            // Upload to storage - handle both base64 (gpt-image-1) and URL (dall-e-3)
             const fileName = `${org_id}/${pack_id}/${direction}-${aspect_ratio.replace(':', 'x')}-${Date.now()}.png`;
-            imageUrl = await uploadFromUrl(result.urls[0], fileName, BUCKET_NAME);
+            if (result.base64Images?.length) {
+                imageUrl = await uploadBase64(result.base64Images[0], fileName, 'image/png', BUCKET_NAME);
+            } else {
+                imageUrl = await uploadFromUrl(result.urls[0], fileName, BUCKET_NAME);
+            }
         } else {
             const result = await generateWithGemini(apiKey, {
                 prompt,

@@ -34,11 +34,13 @@ const ALL_CHAT_MODELS: ModelOption[] = [
   { value: 'gemini-pro', label: 'Gemini Pro', detail: 'Google', bestFor: 'Multimodal', provider: 'gemini' },
 ];
 
-// All available image generation models
+// All available image generation models (latest first)
 const ALL_IMAGE_MODELS: ModelOption[] = [
-  { value: 'dall-e-3', label: 'DALL-E 3', detail: 'OpenAI', bestFor: 'High quality', provider: 'openai' },
-  { value: 'imagen-3', label: 'Imagen 3', detail: 'Google', bestFor: 'Photorealistic', provider: 'gemini' },
-  { value: 'gemini-imagen', label: 'Gemini Imagen', detail: 'Google', bestFor: 'Fast generation', provider: 'gemini' },
+  { value: 'gpt-image-1', label: 'GPT Image', detail: 'OpenAI', bestFor: 'Best quality (Recommended)', provider: 'openai' },
+  { value: 'gpt-image-1-mini', label: 'GPT Image Mini', detail: 'OpenAI', bestFor: 'Cost-saving mode', provider: 'openai' },
+  { value: 'imagen-3', label: 'Imagen 3', detail: 'Google', bestFor: 'Photorealistic (Recommended)', provider: 'gemini' },
+  { value: 'imagen-3-fast', label: 'Imagen 3 Fast', detail: 'Google', bestFor: 'Fast generation', provider: 'gemini' },
+  { value: 'dall-e-3', label: 'DALL-E 3', detail: 'OpenAI', bestFor: 'Legacy support', provider: 'openai' },
 ];
 
 export function ModelDropdown({

@@ -28,9 +28,13 @@ import Image from 'next/image';
 type AspectRatio = '3:2' | '1:1' | '2:3';
 type CreativeMode = 'chat' | 'make';
 
+// Latest image generation models
 const IMAGE_VARIANTS = [
-  { value: 'dall-e-3', label: 'DALL·E 3 (OpenAI)' },
-  { value: 'imagen-3', label: 'Imagen 3 (Google)' },
+  { value: 'gpt-image-1', label: 'GPT Image (OpenAI)', provider: 'openai', recommended: true },
+  { value: 'gpt-image-1-mini', label: 'GPT Image Mini (Cost-Saving)', provider: 'openai', recommended: false },
+  { value: 'imagen-3', label: 'Imagen 3 (Google)', provider: 'gemini', recommended: true },
+  { value: 'imagen-3-fast', label: 'Imagen 3 Fast (Google)', provider: 'gemini', recommended: false },
+  { value: 'dall-e-3', label: 'DALL·E 3 (Legacy)', provider: 'openai', recommended: false },
 ];
 
 interface AvailableApis {
@@ -92,9 +96,9 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
   const [error, setError] = useState<string | null>(null);
   const [isLoadingImages, setIsLoadingImages] = useState(true);
 
-  // Model selection
+  // Model selection - default to latest models
   const [selectedChatModel, setSelectedChatModel] = useState<string>('gpt-4o');
-  const [selectedImageModel, setSelectedImageModel] = useState<string>('dall-e-3');
+  const [selectedImageModel, setSelectedImageModel] = useState<string>('gpt-image-1');
   const [variantImageModels, setVariantImageModels] = useState<string[]>([]);
   const [availableApis, setAvailableApis] = useState<AvailableApis>({
     openai: true,
@@ -159,7 +163,7 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   }, [STORAGE_KEY, chatMessages, proposedCopy, selectedBrandKitId, selectedImageModel, selectedChatModel]);
 
-  // Check available APIs on mount
+  // Check available APIs on mount and set latest models
   useEffect(() => {
     const checkAvailableApis = async () => {
       try {
@@ -167,12 +171,13 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
         const data = await res.json();
         if (data.success) {
           setAvailableApis(data.apis);
+          // Set latest models based on available APIs
           if (data.apis.openai) {
             setSelectedChatModel('gpt-4o');
-            setSelectedImageModel('dall-e-3');
+            setSelectedImageModel('gpt-image-1'); // Latest OpenAI image model
           } else if (data.apis.gemini) {
             setSelectedChatModel('gemini-pro');
-            setSelectedImageModel('imagen-3');
+            setSelectedImageModel('imagen-3'); // Latest Google image model
           }
         }
       } catch (err) {
