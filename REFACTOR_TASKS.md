@@ -13,7 +13,7 @@
 | 1 | Architecture | Update ERD with image_generations, creative_chat_sessions | ✅ Done | High |
 | 2 | Architecture | Document module boundaries and dependencies | 🔄 Pending | High |
 | 3 | Refactor | Split `image-generator.tsx` (~1400 lines → ≤150 each) | ✅ Done | Critical |
-| 4 | Refactor | Split `video-generator.tsx` (~1150 lines → ≤150 each) | 🔄 Pending | Critical |
+| 4 | Refactor | Split `video-generator.tsx` (~1150 lines → ≤150 each) | ✅ Done | Critical |
 | 5 | Refactor | Fix lint errors in `generation/actions.ts` | ✅ Done | Medium |
 | 6 | Refactor | Fix lint errors in `invitations/actions.ts` | ✅ Done | Medium |
 | 7 | Refactor | Fix lint errors in `organizations/actions.ts` | ✅ Done | Medium |
@@ -102,11 +102,23 @@ src/components/image-ads/
 ```
 
 ### Task 4: Split video-generator.tsx
-**Status**: 🔄 Pending  
-**Current**: ~1150 lines  
+**Status**: ✅ Completed (Dec 2024)  
+**Current**: Refactored into modular structure  
 **Target**: 7-9 files, ≤150 lines each
 
-**Proposed Split**: Similar to image-generator structure
+**Created Files**:
+- `src/components/video-ads/VideoGenerator.tsx` - Main orchestrator (~150 lines)
+- `src/components/video-ads/hooks/useVideoChat.ts` - Chat logic (~180 lines)
+- `src/components/video-ads/hooks/useVideoGeneration.ts` - Generation logic (~150 lines)
+- `src/components/video-ads/components/ProposedVideoCard.tsx` - Video ad form (~130 lines)
+- `src/components/video-ads/components/VideoChatPanel.tsx` - Chat panel (~130 lines)
+- `src/components/video-ads/components/GenerationProgress.tsx` - Progress bar (~30 lines)
+- `src/components/video-ads/views/InitialView.tsx` - Landing state (~140 lines)
+- `src/components/video-ads/views/ChatSessionView.tsx` - Split panel (~130 lines)
+
+**Shared Components Created**:
+- `src/components/ads/ad-platform-types.ts` - Multi-platform types & configs (~330 lines)
+- `src/components/ads/platform-size-selector.tsx` - Multi-select UI (~180 lines)
 
 ### Task 5-8: Fix Lint Errors
 **Status**: 🔄 Pending
@@ -134,6 +146,10 @@ Files with `no-explicit-any` and unused vars:
 | Reference images preview | ✅ Dec 8 | Visible in chat panel |
 | Professional system prompt | ✅ Dec 8 | Designer-grade guidance |
 | Structured JSON prompt | ✅ Dec 8 | Layout/accessibility rules |
+| Multi-platform ad selection | ✅ Dec 2024 | Shared component for image & video |
+| Multi-size ad selection | ✅ Dec 2024 | Select multiple sizes at once |
+| Video generator refactor | ✅ Dec 2024 | Split into modular components |
+| DB migration for video columns | ✅ Dec 2024 | Added aspect_ratio, duration, platform |
 
 ---
 

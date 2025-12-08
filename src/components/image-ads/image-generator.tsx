@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { BrandPicker, BrandMode, AnalyzedBrandProfile } from '@/components/ads/brand-picker';
 import { ModelDropdown } from '@/components/ads/model-dropdown';
+import { PlatformSizeSelector } from '@/components/ads/platform-size-selector';
+import { AdPlatform, AdSize, AD_SIZES, PLATFORM_CONFIGS } from '@/components/ads/ad-platform-types';
 import { GeneratedGrid, GeneratedImage } from './generated-grid';
 import { useChatSession, ChatSessionData } from './use-chat-session';
 import { BrandKit } from '@/modules/brand-kits/types';
@@ -96,6 +98,10 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
   // Prompt & generation state
   const [prompt, setPrompt] = useState('');
   const [selectedAspect, setSelectedAspect] = useState<AspectRatio>('1:1');
+  
+  // Multi-platform & size selection
+  const [selectedPlatforms, setSelectedPlatforms] = useState<AdPlatform[]>(['google_ads', 'facebook']);
+  const [selectedSizes, setSelectedSizes] = useState<AdSize[]>([AD_SIZES.square]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
@@ -364,35 +370,51 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
 
     try {
       const brandContext = getSelectedBrandContext();
-      let systemPrompt = `You are a creative advertising expert helping create image ads.
+      
+      // Get platform-specific context
+      const platformNames = selectedPlatforms.map(p => PLATFORM_CONFIGS[p].displayName).join(', ');
+      const sizeDescriptions = selectedSizes.map(s => `${s.name} (${s.aspectRatio})`).join(', ');
+      const primaryPlatform = selectedPlatforms[0] ? PLATFORM_CONFIGS[selectedPlatforms[0]] : null;
+      
+      let systemPrompt = `You are a professional PPC advertising designer creating high-converting IMAGE ADS for paid digital advertising.
 
-Your job is to:
-1. Discuss the user's ad concept and goals
-2. When you have enough information, propose the IMAGE OVERLAY elements with this EXACT format:
+## YOUR ROLE
+Create image ads optimized for: ${platformNames}
+Target sizes: ${sizeDescriptions}
+
+## PLATFORM REQUIREMENTS
+${primaryPlatform ? `- ${primaryPlatform.displayName}: ${primaryPlatform.creativeGuidelines}` : ''}
+${primaryPlatform?.bestPractices.textLimit ? `- Text Limit: ${primaryPlatform.bestPractices.textLimit}` : ''}
+
+## YOUR WORKFLOW
+1. Understand the product/service and campaign goals
+2. Ask about target audience and key selling points if unclear
+3. When ready, propose the ad with this EXACT format:
 
 ---PROPOSED AD COPY---
-HEADLINE: [catchy headline text that will appear ON the image]
-CTA: [call-to-action button text that will appear ON the image]
-IMAGE DIRECTION: [brief visual description for image generation]
-OVERLAY_ELEMENTS: [comma-separated list of elements to add: headline, button, logo, badge, tagline]
+HEADLINE: [max 45 chars, punchy, action-oriented]
+CTA: [2-4 words: Shop Now, Get Started, Learn More, etc.]
+IMAGE DIRECTION: [detailed visual description: subject, style, composition, colors, mood]
+OVERLAY_ELEMENTS: headline, button, logo
 ---END COPY---
 
-IMPORTANT: Focus ONLY on what text/elements will be OVERLAID on the image:
-- HEADLINE: The main text displayed prominently on the image
-- CTA: The button text (e.g., "Shop Now", "Learn More")
-- OVERLAY_ELEMENTS: Which visual elements to include on the image
- - LOGO: Always include the brand logo badge when available (top-right or bottom-right with padding)
- - BADGE/TAGLINE: Only if they improve scannability
+## OVERLAY RULES (Critical for PPC)
+- HEADLINE: Bold, high-contrast, top or center placement
+- CTA: Button style, bottom-right or center-bottom
+- LOGO: Brand logo badge (top-right with padding)
+- Max 20% text coverage (Facebook/Meta requirement)
+- Mobile-safe margins (min 14% from edges)
+- WCAG AA contrast ratios
+- No body copy - headlines only
 
-Overlay rules:
-- Max 45 chars for headline, ultra concise CTA
-- High contrast (WCAG AA), safe padding, mobile-safe margins
-- Avoid long paragraphs; no body copy
-- Keep background clear behind text; avoid busy areas
+## KEY PRINCIPLES
+- Every pixel should SELL - this is paid advertising
+- Clear value proposition visible instantly
+- Strong visual hierarchy: Image > Headline > CTA
+- Colors that pop but match brand palette
+- Professional, not generic stock-photo look
 
-Do NOT suggest "primary text" or body copy - we only need image overlay elements.
-Always propose when you have a clear idea. Ask clarifying questions if needed first.
-Be concise, concrete, and layout-aware.`;
+Be strategic. Ask clarifying questions if needed. Propose when you have enough context.`;
       
       if (brandContext) {
         systemPrompt += `\n\nBrand Context:\n- Brand: ${brandContext.businessName || brandContext.brandName || 'Unknown'}\n`;
@@ -753,6 +775,16 @@ Be concise, concrete, and layout-aware.`;
                         selectedImageModel={selectedImageModel}
                         onChatModelChange={setSelectedChatModel}
                         onImageModelChange={setSelectedImageModel}
+                      />
+
+                      {/* Platform & Size Selector */}
+                      <PlatformSizeSelector
+                        mediaType="image"
+                        selectedPlatforms={selectedPlatforms}
+                        selectedSizes={selectedSizes}
+                        onPlatformsChange={setSelectedPlatforms}
+                        onSizesChange={setSelectedSizes}
+                        disabled={isGenerating}
                       />
 
                       {/* Mode Toggle */}
@@ -1312,6 +1344,16 @@ return (
                 selectedImageModel={selectedImageModel}
                 onChatModelChange={setSelectedChatModel}
                 onImageModelChange={setSelectedImageModel}
+              />
+
+              {/* Platform & Size Selector */}
+              <PlatformSizeSelector
+                mediaType="image"
+                selectedPlatforms={selectedPlatforms}
+                selectedSizes={selectedSizes}
+                onPlatformsChange={setSelectedPlatforms}
+                onSizesChange={setSelectedSizes}
+                disabled={isGenerating || isChatting}
               />
 
               {/* Chat / Make Mode Toggle */}

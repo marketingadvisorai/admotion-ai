@@ -82,8 +82,9 @@ export function VideoGenerator({ displayName, brandKits, llmProfiles, orgId }: V
   const handlePlatformChange = (platform: AdPlatform) => {
     setSelectedPlatform(platform);
     const preset = PLATFORM_PRESETS[platform];
-    setSelectedAspect(preset.recommendedAspectRatios[0]);
-    setDuration(Math.min(preset.recommendedDuration, 15) as VideoDuration);
+    const defaultAspect = (preset.recommendedAspectRatios?.[0] || preset.videoSizes?.[0]?.aspectRatio || '16:9') as AspectRatioVideo;
+    setSelectedAspect(defaultAspect);
+    setDuration(Math.min(preset.recommendedDuration || 15, 15) as VideoDuration);
     // Auto-adjust audio based on platform
     if (preset.bestPractices.soundDefault === 'off') {
       setAudioEnabled(false);
@@ -320,8 +321,8 @@ Create high-converting video ads optimized for ${preset.displayName}. These are 
 ## PLATFORM REQUIREMENTS (${preset.displayName})
 - Hook Time: ${preset.bestPractices.hookTime} - Grab attention IMMEDIATELY
 - Sound: Default ${preset.bestPractices.soundDefault} - ${preset.bestPractices.captionRequired ? 'CAPTIONS ARE ESSENTIAL' : 'Audio enhances experience'}
-- Optimal Duration: ${preset.recommendedDuration}s (max ${preset.maxDuration}s)
-- Best Aspect Ratios: ${preset.recommendedAspectRatios.join(', ')}
+- Optimal Duration: ${preset.recommendedDuration || 15}s (max ${preset.maxDuration || 60}s)
+- Best Aspect Ratios: ${preset.recommendedAspectRatios?.join(', ') || preset.videoSizes?.map(s => s.aspectRatio).join(', ') || '16:9'}
 - CTA Placement: ${preset.bestPractices.ctaPlacement}
 
 ## CREATIVE GUIDELINES
@@ -342,7 +343,7 @@ CTA: [action-oriented CTA button text: Shop Now, Learn More, Get Started, etc.]
 SCENE_DESCRIPTION: [detailed shot-by-shot description: opening hook, middle action, closing CTA]
 VISUAL_THEME: [cinematic/energetic/minimalist/bold/luxurious/playful/professional/authentic]
 AUDIO_STYLE: [upbeat/cinematic/electronic/ambient/dramatic/trending]
-DURATION: [${preset.minDuration}-${Math.min(preset.recommendedDuration, 15)} seconds]
+DURATION: [${preset.minDuration || 6}-${Math.min(preset.recommendedDuration || 15, 15)} seconds]
 HOOK: [what happens in first ${preset.bestPractices.hookTime} to stop the scroll]
 ---END VIDEO AD---
 
@@ -770,7 +771,7 @@ Be strategic and direct. Ask clarifying questions if needed.`;
                       <strong className="text-slate-500">{platformPreset.displayName}:</strong>{' '}
                       Hook in {platformPreset.bestPractices.hookTime} • 
                       {platformPreset.bestPractices.captionRequired ? ' Captions required' : ' Audio on'} • 
-                      Best: {platformPreset.recommendedAspectRatios[0]}
+                      Best: {platformPreset.recommendedAspectRatios?.[0] || platformPreset.videoSizes?.[0]?.aspectRatio || '16:9'}
                     </span>
                   </div>
                 </div>
