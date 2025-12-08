@@ -16,6 +16,8 @@ import {
   Video,
   Clock,
   Volume2,
+  Globe,
+  Info,
 } from 'lucide-react';
 import { BrandPicker, BrandMode, AnalyzedBrandProfile } from '@/components/ads/brand-picker';
 import { ModelDropdown } from '@/components/ads/model-dropdown';
@@ -25,7 +27,7 @@ import { BrandKit } from '@/modules/brand-kits/types';
 import { LlmProfile } from '@/modules/llm/types';
 import { VideoGeneration } from '@/modules/video-generation/types';
 import { VIDEO_MODELS } from '@/modules/video-generation/providers/factory';
-import { AspectRatioVideo, GeneratedVideo } from './types';
+import { AspectRatioVideo, GeneratedVideo, AdPlatform, PLATFORM_PRESETS } from './types';
 
 type CreativeMode = 'chat' | 'make';
 
@@ -63,6 +65,7 @@ export function VideoGenerator({ displayName, brandKits, llmProfiles, orgId }: V
 
   // Prompt & generation state
   const [prompt, setPrompt] = useState('');
+  const [selectedPlatform, setSelectedPlatform] = useState<AdPlatform>('google_ads');
   const [selectedAspect, setSelectedAspect] = useState<AspectRatioVideo>('16:9');
   const [duration, setDuration] = useState<VideoDuration>(10);
   const [audioEnabled, setAudioEnabled] = useState(true);
@@ -71,6 +74,23 @@ export function VideoGenerator({ displayName, brandKits, llmProfiles, orgId }: V
   const [generatedVideos, setGeneratedVideos] = useState<GeneratedVideo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingVideos, setIsLoadingVideos] = useState(true);
+
+  // Platform preset helper
+  const platformPreset = PLATFORM_PRESETS[selectedPlatform];
+
+  // Update settings when platform changes
+  const handlePlatformChange = (platform: AdPlatform) => {
+    setSelectedPlatform(platform);
+    const preset = PLATFORM_PRESETS[platform];
+    setSelectedAspect(preset.recommendedAspectRatios[0]);
+    setDuration(Math.min(preset.recommendedDuration, 15) as VideoDuration);
+    // Auto-adjust audio based on platform
+    if (preset.bestPractices.soundDefault === 'off') {
+      setAudioEnabled(false);
+    } else {
+      setAudioEnabled(true);
+    }
+  };
 
   // Model selection
   const [selectedChatModel, setSelectedChatModel] = useState<string>('gpt-5.1');
@@ -289,29 +309,51 @@ export function VideoGenerator({ displayName, brandKits, llmProfiles, orgId }: V
 
     try {
       const brandContext = getSelectedBrandContext();
-      let systemPrompt = `You are a creative video advertising expert helping create short video ads (8-12 seconds).
+      const preset = PLATFORM_PRESETS[selectedPlatform];
+      
+      // Platform-specific system prompt for professional ad creation
+      let systemPrompt = `You are a professional video advertising expert specializing in ${preset.displayName} ads.
 
-Your job is to:
-1. Discuss the user's video ad concept and goals
-2. When you have enough information, propose the VIDEO AD elements with this EXACT format:
+## YOUR ROLE
+Create high-converting video ads optimized for ${preset.displayName}. These are PAID ADVERTISEMENTS for digital marketing, not artistic videos.
+
+## PLATFORM REQUIREMENTS (${preset.displayName})
+- Hook Time: ${preset.bestPractices.hookTime} - Grab attention IMMEDIATELY
+- Sound: Default ${preset.bestPractices.soundDefault} - ${preset.bestPractices.captionRequired ? 'CAPTIONS ARE ESSENTIAL' : 'Audio enhances experience'}
+- Optimal Duration: ${preset.recommendedDuration}s (max ${preset.maxDuration}s)
+- Best Aspect Ratios: ${preset.recommendedAspectRatios.join(', ')}
+- CTA Placement: ${preset.bestPractices.ctaPlacement}
+
+## CREATIVE GUIDELINES
+${preset.creativeGuidelines}
+
+## YOUR WORKFLOW
+1. Understand the product/service and target audience
+2. Ask about campaign goals (awareness, conversion, engagement)
+3. Propose a video ad concept optimized for ${preset.displayName}
+
+## WHEN READY, OUTPUT THIS EXACT FORMAT:
 
 ---PROPOSED VIDEO AD---
-HEADLINE: [catchy headline text for end frame overlay]
-SUBHEADLINE: [optional subheadline]
-CTA: [call-to-action button text]
-SCENE_DESCRIPTION: [detailed visual description of the video scene]
-VISUAL_THEME: [cinematic/energetic/minimalist/bold/luxurious/playful]
-AUDIO_STYLE: [upbeat/cinematic/electronic/ambient/dramatic]
-DURATION: [8/10/12 seconds]
+PLATFORM: ${selectedPlatform}
+HEADLINE: [punchy headline, max 5 words, for end frame overlay]
+SUBHEADLINE: [supporting text, max 10 words]
+CTA: [action-oriented CTA button text: Shop Now, Learn More, Get Started, etc.]
+SCENE_DESCRIPTION: [detailed shot-by-shot description: opening hook, middle action, closing CTA]
+VISUAL_THEME: [cinematic/energetic/minimalist/bold/luxurious/playful/professional/authentic]
+AUDIO_STYLE: [upbeat/cinematic/electronic/ambient/dramatic/trending]
+DURATION: [${preset.minDuration}-${Math.min(preset.recommendedDuration, 15)} seconds]
+HOOK: [what happens in first ${preset.bestPractices.hookTime} to stop the scroll]
 ---END VIDEO AD---
 
-Focus on:
-- SCENE_DESCRIPTION: What happens visually in the video (people, actions, settings, camera movements)
-- VISUAL_THEME: The overall look and feel
-- AUDIO_STYLE: Background music mood
-- Text overlays appear in the final 2 seconds
+## KEY PRINCIPLES FOR ${preset.displayName.toUpperCase()}
+- First ${preset.bestPractices.hookTime} is CRITICAL - make it unmissable
+- Clear value proposition early
+- Brand elements visible but not overwhelming
+- Strong CTA that drives action
+- Mobile-first design
 
-Be concise and actionable. Ask clarifying questions if needed first.`;
+Be strategic and direct. Ask clarifying questions if needed.`;
       
       if (brandContext) {
         systemPrompt += `\n\nBrand Context:\n- Brand: ${brandContext.businessName || brandContext.brandName || 'Unknown'}\n`;
@@ -572,7 +614,23 @@ Be concise and actionable. Ask clarifying questions if needed first.`;
                   />
 
                   <div className="flex items-center justify-between px-4 pb-4 -mt-14">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Platform Selector */}
+                      <div className="relative group">
+                        <select
+                          value={selectedPlatform}
+                          onChange={(e) => handlePlatformChange(e.target.value as AdPlatform)}
+                          className="appearance-none pl-8 pr-6 py-2 text-xs font-medium rounded-full bg-white/80 border border-white/60 text-slate-700 cursor-pointer hover:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                        >
+                          {Object.values(PLATFORM_PRESETS).map((p) => (
+                            <option key={p.platform} value={p.platform}>
+                              {p.displayName}
+                            </option>
+                          ))}
+                        </select>
+                        <Globe className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-purple-500 pointer-events-none" />
+                      </div>
+
                       <BrandPicker
                         brandKits={brandKitOptions}
                         analyzedBrands={analyzerProfiles}
@@ -698,13 +756,24 @@ Be concise and actionable. Ask clarifying questions if needed first.`;
                   </div>
                 </div>
                 
-                {/* Helper text */}
-                <p className="text-center text-xs text-slate-500 mt-3">
-                  {creativeMode === 'chat' 
-                    ? 'Chat mode: Discuss your idea, AI will propose video ad details for you to confirm.'
-                    : 'Make mode: Directly generate videos from your description.'}
-                  <span className="ml-2 text-slate-400">Enter to send • Shift+Enter for newline</span>
-                </p>
+                {/* Helper text with platform info */}
+                <div className="text-center mt-3 space-y-1">
+                  <p className="text-xs text-slate-500">
+                    {creativeMode === 'chat' 
+                      ? 'Chat mode: Discuss your idea, AI will propose video ad details for you to confirm.'
+                      : 'Make mode: Directly generate videos from your description.'}
+                    <span className="ml-2 text-slate-400">Enter to send • Shift+Enter for newline</span>
+                  </p>
+                  <div className="flex items-center justify-center gap-2 text-[11px] text-slate-400">
+                    <Info className="size-3" />
+                    <span>
+                      <strong className="text-slate-500">{platformPreset.displayName}:</strong>{' '}
+                      Hook in {platformPreset.bestPractices.hookTime} • 
+                      {platformPreset.bestPractices.captionRequired ? ' Captions required' : ' Audio on'} • 
+                      Best: {platformPreset.recommendedAspectRatios[0]}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

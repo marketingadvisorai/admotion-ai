@@ -21,6 +21,7 @@ import {
     LogOut,
     PanelLeftClose,
     Target,
+    Library,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
@@ -45,6 +46,7 @@ export function Sidebar({ user, orgs, signOutAction, isOpen, isMobile, onClose }
         { href: `/dashboard/${orgId}/brand-optimizer`, label: 'Optimize', icon: Sparkles },
         { href: `/dashboard/${orgId}/image-ads`, label: 'Image', icon: Images },
         { href: `/dashboard/${orgId}/video-ads`, label: 'Video', icon: Clapperboard },
+        { href: `/dashboard/${orgId}/ad-library`, label: 'Ad Library', icon: Library },
         { href: `/dashboard/${orgId}/tracking-ai`, label: 'Tracking', icon: Target },
         { href: `/dashboard/${orgId}/assets`, label: 'Assets', icon: FolderOpen },
         { href: `/dashboard/${orgId}/integrations`, label: 'Integrations', icon: Plug },
