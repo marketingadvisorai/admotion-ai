@@ -1,14 +1,23 @@
 /**
  * Google Gemini Image Generation Provider
- * Uses Imagen 3 (latest) for high-quality marketing images
- * Fallback to Gemini 2.0 Flash for multimodal generation
+ * 
+ * Models (per Google AI docs):
+ * - gemini-3-pro-image-preview (Nano Banana Pro) - Professional quality, 4K, Thinking process
+ * - gemini-2.5-flash-image (Nano Banana) - Fast generation, 1024px
+ * 
+ * @see https://ai.google.dev/gemini-api/docs/image-generation
  */
 
 import { ImageAspectRatio } from '../types';
 
-// Nano Banana Pro = Gemini 3 Pro Image (highest quality)
-// Nano Banana = Gemini 2.5 Flash (fast drafts)
-export type GeminiImageModel = 'nano-banana-pro' | 'nano-banana' | 'imagen-3' | 'imagen-3-fast' | 'gemini-2.0-flash';
+// Model aliases matching Google's naming
+export type GeminiImageModel = 
+    | 'nano-banana-pro'      // Maps to gemini-3-pro-image-preview
+    | 'nano-banana'          // Maps to gemini-2.5-flash-image
+    | 'gemini-3-pro-image-preview'
+    | 'gemini-2.5-flash-image'
+    | 'imagen-3'             // Legacy
+    | 'imagen-3-fast';       // Legacy
 
 export interface GeminiGenerateOptions {
     prompt: string;
@@ -17,6 +26,7 @@ export interface GeminiGenerateOptions {
     style?: string;
     model?: GeminiImageModel;
     quality?: 'standard' | 'high';
+    imageSize?: '1K' | '2K' | '4K';  // Only for gemini-3-pro-image-preview
 }
 
 export interface GeminiGenerateResult {
@@ -27,10 +37,10 @@ export interface GeminiGenerateResult {
     model: string;
 }
 
-// Imagen 3 aspect ratio mapping
-const IMAGEN_ASPECT_RATIOS: Record<ImageAspectRatio, string> = {
+// Gemini supported aspect ratios
+const GEMINI_ASPECT_RATIOS: Record<ImageAspectRatio, string> = {
     '1:1': '1:1',
-    '4:5': '3:4',   // Closest supported ratio
+    '4:5': '4:5',
     '3:2': '3:2',
     '2:3': '2:3',
     '16:9': '16:9',
@@ -46,108 +56,38 @@ export async function generateWithGemini(
 ): Promise<GeminiGenerateResult> {
     const model = options.model || 'nano-banana-pro';
     
-    // Nano Banana Pro = Gemini 3 Pro Image (highest quality)
-    if (model === 'nano-banana-pro') {
-        return generateWithGemini3Pro(apiKey, options);
+    // Nano Banana Pro = Gemini 3 Pro Image Preview (highest quality, 4K)
+    if (model === 'nano-banana-pro' || model === 'gemini-3-pro-image-preview') {
+        return generateWithGemini3ProImage(apiKey, options);
     }
     
-    // Nano Banana = Gemini 2.5 Flash (fast drafts)
-    if (model === 'nano-banana' || model === 'gemini-2.0-flash') {
-        return generateWithGeminiFlash(apiKey, options);
+    // Nano Banana = Gemini 2.5 Flash Image (fast drafts, 1024px)
+    if (model === 'nano-banana' || model === 'gemini-2.5-flash-image') {
+        return generateWithGemini25FlashImage(apiKey, options);
     }
     
-    // Legacy Imagen 3 support
+    // Legacy Imagen 3 support (fallback to Gemini 2.5 Flash)
     if (model === 'imagen-3' || model === 'imagen-3-fast') {
-        return generateWithImagen3(apiKey, options);
+        return generateWithGemini25FlashImage(apiKey, options);
     }
     
-    // Default to Gemini 3 Pro
-    return generateWithGemini3Pro(apiKey, options);
+    // Default to Gemini 3 Pro Image
+    return generateWithGemini3ProImage(apiKey, options);
 }
 
 /**
- * Generate with Imagen 3 (latest, highest quality)
- * Model: imagen-3.0-generate-002 (latest version)
+ * Generate with Gemini 3 Pro Image Preview (Nano Banana Pro)
+ * Highest quality - supports 4K resolution, Thinking process, Google Search grounding
+ * Model: gemini-3-pro-image-preview
  */
-async function generateWithImagen3(
+async function generateWithGemini3ProImage(
     apiKey: string,
     options: GeminiGenerateOptions
 ): Promise<GeminiGenerateResult> {
-    const numberOfImages = Math.min(options.numberOfImages || 1, 4);
-    const aspectRatio = IMAGEN_ASPECT_RATIOS[options.aspectRatio || '1:1'];
+    const aspectRatio = GEMINI_ASPECT_RATIOS[options.aspectRatio || '1:1'];
     
-    // Use the latest Imagen 3 model
-    const modelVersion = options.model === 'imagen-3-fast' 
-        ? 'imagen-3.0-fast-generate-001' 
-        : 'imagen-3.0-generate-002';
-    
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelVersion}:predict?key=${apiKey}`;
-
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            instances: [
-                {
-                    prompt: options.prompt,
-                },
-            ],
-            parameters: {
-                sampleCount: numberOfImages,
-                aspectRatio,
-                personGeneration: 'allow_adult',
-                safetyFilterLevel: 'block_only_high',
-                addWatermark: false,
-                // High quality mode
-                ...(options.quality === 'high' && {
-                    mode: 'quality',
-                }),
-            },
-        }),
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Imagen 3 API error:', errorText);
-        // Fallback to Gemini 2.0 Flash if Imagen fails
-        console.log('Falling back to Gemini 2.0 Flash...');
-        return generateWithGeminiFlash(apiKey, options);
-    }
-
-    const data = await response.json();
-    const images: Array<{ base64: string; mimeType: string }> = [];
-    
-    if (data.predictions) {
-        for (const prediction of data.predictions) {
-            if (prediction.bytesBase64Encoded) {
-                images.push({
-                    base64: prediction.bytesBase64Encoded,
-                    mimeType: prediction.mimeType || 'image/png',
-                });
-            }
-        }
-    }
-
-    return { 
-        images,
-        model: modelVersion,
-    };
-}
-
-/**
- * Generate with Gemini 3 Pro Image (Nano Banana Pro)
- * Highest quality image generation
- */
-async function generateWithGemini3Pro(
-    apiKey: string,
-    options: GeminiGenerateOptions
-): Promise<GeminiGenerateResult> {
-    const aspectRatio = options.aspectRatio || '1:1';
-    
-    // Gemini 3 Pro with native image generation (highest quality)
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.0-pro-image-generation:generateContent?key=${apiKey}`;
+    // gemini-3-pro-image-preview - Professional quality with 4K support
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
         method: 'POST',
@@ -157,26 +97,26 @@ async function generateWithGemini3Pro(
         body: JSON.stringify({
             contents: [
                 {
-                    parts: [
-                        {
-                            text: options.prompt,
-                        },
-                    ],
+                    parts: [{ text: options.prompt }],
                 },
             ],
             generationConfig: {
-                responseModalities: ['IMAGE', 'TEXT'],
-                imageSizeHint: aspectRatio,
+                responseModalities: ['IMAGE'],
+                // Image configuration for aspect ratio and size
+                imageConfig: {
+                    aspectRatio,
+                    ...(options.imageSize && { imageSize: options.imageSize }),
+                },
             },
         }),
     });
 
     if (!response.ok) {
         const errorText = await response.text();
-        console.error('Gemini 3 Pro API error:', errorText);
-        // Fallback to Gemini 2.5 Flash if Gemini 3 Pro fails
-        console.log('Falling back to Gemini 2.5 Flash (Nano Banana)...');
-        return generateWithGeminiFlash(apiKey, options);
+        console.error('Gemini 3 Pro Image API error:', errorText);
+        // Fallback to Gemini 2.5 Flash Image
+        console.log('Falling back to Gemini 2.5 Flash Image (Nano Banana)...');
+        return generateWithGemini25FlashImage(apiKey, options);
     }
 
     const data = await response.json();
@@ -195,22 +135,23 @@ async function generateWithGemini3Pro(
 
     return { 
         images,
-        model: 'nano-banana-pro',
+        model: 'gemini-3-pro-image-preview',
     };
 }
 
 /**
- * Generate with Gemini 2.5 Flash (Nano Banana)
- * Fast drafts and quick variations
+ * Generate with Gemini 2.5 Flash Image (Nano Banana)
+ * Fast generation - optimized for speed, 1024px resolution
+ * Model: gemini-2.5-flash-image
  */
-async function generateWithGeminiFlash(
+async function generateWithGemini25FlashImage(
     apiKey: string,
     options: GeminiGenerateOptions
 ): Promise<GeminiGenerateResult> {
-    const aspectRatio = options.aspectRatio || '1:1';
+    const aspectRatio = GEMINI_ASPECT_RATIOS[options.aspectRatio || '1:1'];
     
-    // Gemini 2.5 Flash with native image generation
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-image-generation:generateContent?key=${apiKey}`;
+    // gemini-2.5-flash-image - Fast generation
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
         method: 'POST',
@@ -220,24 +161,22 @@ async function generateWithGeminiFlash(
         body: JSON.stringify({
             contents: [
                 {
-                    parts: [
-                        {
-                            text: options.prompt,
-                        },
-                    ],
+                    parts: [{ text: options.prompt }],
                 },
             ],
             generationConfig: {
-                responseModalities: ['IMAGE', 'TEXT'],
-                imageSizeHint: aspectRatio,
+                responseModalities: ['IMAGE'],
+                imageConfig: {
+                    aspectRatio,
+                },
             },
         }),
     });
 
     if (!response.ok) {
         const errorText = await response.text();
-        console.error('Gemini Flash API error:', errorText);
-        throw new Error(`Gemini Flash API error: ${response.status} - ${errorText}`);
+        console.error('Gemini 2.5 Flash Image API error:', errorText);
+        throw new Error(`Gemini image generation failed: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
@@ -256,7 +195,7 @@ async function generateWithGeminiFlash(
 
     return { 
         images,
-        model: 'nano-banana',
+        model: 'gemini-2.5-flash-image',
     };
 }
 
@@ -267,5 +206,5 @@ export async function generateWithImagen(
     apiKey: string,
     options: GeminiGenerateOptions
 ): Promise<GeminiGenerateResult> {
-    return generateWithImagen3(apiKey, options);
+    return generateWithGemini25FlashImage(apiKey, options);
 }

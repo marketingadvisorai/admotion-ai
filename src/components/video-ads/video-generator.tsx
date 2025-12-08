@@ -8,7 +8,6 @@ import {
   Loader2, 
   AlertCircle, 
   MessageSquare, 
-  Wand2, 
   Send,
   Trash2,
   Sparkles,
@@ -84,25 +83,29 @@ export function VideoGenerator({ displayName, brandKits, llmProfiles, orgId }: V
   });
 
   // Chat state
-  const [creativeMode, setCreativeMode] = useState<CreativeMode>('make');
+  const [creativeMode, setCreativeMode] = useState<CreativeMode>('chat');
   const [chatMessages, setChatMessages] = useState<VideoChatMessage[]>([]);
   const [isChatting, setIsChatting] = useState(false);
   const [proposedCopy, setProposedCopy] = useState<ProposedVideoCopy | null>(null);
   const [generationProgress, setGenerationProgress] = useState<number>(0);
   
+  // Track current session videos
+  const [currentSessionVideos, setCurrentSessionVideos] = useState<GeneratedVideo[]>([]);
+  
   const chatEndRef = useRef<HTMLDivElement>(null);
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
+  const userStartedChatRef = useRef(false);
 
-  // Derived state
-  const isInChatSession = chatMessages.length > 0;
-  const canGenerate = proposedCopy?.confirmed || (creativeMode === 'make' && prompt.trim().length > 0);
+  // Derived state - show split view only when user has started chatting or loaded a session
+  const isInChatSession = userStartedChatRef.current && (chatMessages.length > 0 || proposedCopy !== null);
 
   // Chat session persistence
-  const { saveSession, createNewSession, isLoading: isSessionLoading } = useVideoChatSession({
+  const { sessionId, saveSession, createNewSession, loadSessionById, isLoading: isSessionLoading } = useVideoChatSession({
     orgId,
     onSessionLoaded: (session) => {
       if (session.messages?.length) {
         setChatMessages(session.messages);
+        userStartedChatRef.current = true;
       }
       if (session.proposedCopy) {
         setProposedCopy(session.proposedCopy);
@@ -269,6 +272,8 @@ export function VideoGenerator({ displayName, brandKits, llmProfiles, orgId }: V
   const handleChat = async () => {
     if (!prompt.trim()) return;
     
+    // Mark that user started chatting (enables split view)
+    userStartedChatRef.current = true;
     setIsChatting(true);
     setError(null);
     
@@ -448,6 +453,7 @@ Be concise and actionable. Ask clarifying questions if needed first.`;
       };
 
       setGeneratedVideos((prev) => [newVideo, ...prev]);
+      setCurrentSessionVideos((prev) => [newVideo, ...prev]); // Track videos in current session
       setPrompt('');
       
       // Reset proposed copy after successful generation
@@ -458,7 +464,7 @@ Be concise and actionable. Ask clarifying questions if needed first.`;
           {
             id: `${Date.now()}-feedback`,
             role: 'assistant',
-            content: `Video generation started! Job ID: ${data.jobId}. The video is processing and will appear in your gallery when ready. How does the concept look? Share feedback or try a different model for variations.`,
+            content: `Video generation started! The video is processing and will appear in your gallery when ready. How does the concept look? Share feedback or try a different model for variations.`,
             timestamp: new Date(),
           },
         ]);
@@ -494,11 +500,15 @@ Be concise and actionable. Ask clarifying questions if needed first.`;
     }
   };
 
-  // Clear chat
-  const handleClearChat = () => {
+  // Clear chat and create new session - returns to initial view
+  const handleClearChat = async () => {
     setChatMessages([]);
     setProposedCopy(null);
     setPrompt('');
+    setCurrentSessionVideos([]);
+    userStartedChatRef.current = false; // Return to initial view
+    // Create a new session in Supabase
+    await createNewSession();
   };
 
   // Confirm proposed copy
@@ -936,6 +946,37 @@ Be concise and actionable. Ask clarifying questions if needed first.`;
                   Generated Videos
                 </h4>
                 <ResultGridVideo videos={generatedVideos.slice(0, 6)} />
+                {/* Feedback card after generation */}
+                <div className="mt-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">How do these look?</p>
+                      <p className="text-xs text-slate-500">Share feedback or switch models for another take.</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setCreativeMode('chat');
+                          setPrompt('Looks good. Create a small variation with the same concept.');
+                        }}
+                      >
+                        Looks good — iterate
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setCreativeMode('chat');
+                          setPrompt('Adjust the video: try a different visual style or pacing.');
+                        }}
+                      >
+                        Needs changes
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-2">Tip: toggle another model above (e.g., Veo 3.1) for a different style.</p>
+                </div>
               </div>
             )}
 

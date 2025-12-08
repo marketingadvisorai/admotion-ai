@@ -303,6 +303,44 @@ export function useVideoChatSession({ orgId, onSessionLoaded }: UseVideoChatSess
         }
     }, [orgId]);
 
+    // Load a specific session by ID
+    const loadSessionById = useCallback(async (targetSessionId: string) => {
+        const supabase = supabaseRef.current;
+        
+        try {
+            const { data: session, error } = await supabase
+                .from('creative_chat_sessions')
+                .select('*')
+                .eq('id', targetSessionId)
+                .single();
+
+            if (error || !session) {
+                console.error('Failed to load session by ID:', error);
+                return;
+            }
+
+            setSessionId(session.id);
+            
+            const messages = (session.messages || []).map((m: Record<string, unknown>) => ({
+                ...m,
+                timestamp: new Date(m.timestamp as string),
+            }));
+            
+            const sessionData: VideoChatSessionData = {
+                id: session.id,
+                messages: messages as VideoChatMessage[],
+                proposedCopy: session.proposed_copy as ProposedVideoCopy | null,
+                brandKitId: session.brand_kit_id,
+                selectedModels: session.selected_models as SessionModels | null,
+            };
+            
+            onSessionLoadedRef.current?.(sessionData);
+            saveToLocalStorage(orgId, sessionData);
+        } catch (err) {
+            console.error('Failed to load session by ID:', err);
+        }
+    }, [orgId]);
+
     // Cleanup on unmount
     useEffect(() => {
         return () => {
@@ -318,6 +356,7 @@ export function useVideoChatSession({ orgId, onSessionLoaded }: UseVideoChatSess
         isSaving,
         saveSession,
         createNewSession,
+        loadSessionById,
     };
 }
 

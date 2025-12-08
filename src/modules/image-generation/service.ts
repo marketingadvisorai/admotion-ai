@@ -423,7 +423,7 @@ export async function generateImages(input: ImageGenerationInput): Promise<Gener
                         .insert({
                             org_id: input.orgId,
                             campaign_id: input.campaignId || null,
-                            brand_kit_id: input.brandKitId || null,
+                            // brand_kit_id: input.brandKitId || null, // Column pending migration
                             provider: 'openai',
                             model: result.model,
                             prompt_used: finalPrompt,
@@ -431,7 +431,7 @@ export async function generateImages(input: ImageGenerationInput): Promise<Gener
                             aspect_ratio: input.aspectRatio || '1:1',
                             result_url: storageUrl,
                             status: 'completed',
-                            metadata: { promptSpec },
+                            metadata: { promptSpec, brandKitId: input.brandKitId },
                         })
                         .select()
                         .single();
@@ -450,7 +450,7 @@ export async function generateImages(input: ImageGenerationInput): Promise<Gener
                         .insert({
                             org_id: input.orgId,
                             campaign_id: input.campaignId || null,
-                            brand_kit_id: input.brandKitId || null,
+                            // brand_kit_id: input.brandKitId || null, // Column pending migration
                             provider: 'openai',
                             model: result.model,
                             prompt_used: finalPrompt,
@@ -458,7 +458,7 @@ export async function generateImages(input: ImageGenerationInput): Promise<Gener
                             aspect_ratio: input.aspectRatio || '1:1',
                             result_url: storageUrl,
                             status: 'completed',
-                            metadata: { revisedPrompt: result.revisedPrompt, promptSpec },
+                            metadata: { revisedPrompt: result.revisedPrompt, promptSpec, brandKitId: input.brandKitId },
                         })
                         .select()
                         .single();
@@ -479,8 +479,8 @@ export async function generateImages(input: ImageGenerationInput): Promise<Gener
             });
 
         } else if (provider === 'gemini') {
-            // Generate with Gemini Imagen 3 (default) or specified model
-            const geminiModel = model as 'imagen-3' | 'imagen-3-fast' | 'gemini-2.0-flash';
+            // Generate with Gemini image models
+            const geminiModel = model as 'nano-banana-pro' | 'nano-banana' | 'gemini-3-pro-image-preview' | 'gemini-2.5-flash-image';
             
             const result = await generateWithGemini(apiKey, {
                 prompt: finalPrompt,
@@ -500,7 +500,7 @@ export async function generateImages(input: ImageGenerationInput): Promise<Gener
                     .insert({
                         org_id: input.orgId,
                         campaign_id: input.campaignId || null,
-                        brand_kit_id: input.brandKitId || null,
+                        // brand_kit_id: input.brandKitId || null, // Column pending migration
                         provider: 'gemini',
                         model: result.model,
                         prompt_used: finalPrompt,
@@ -508,7 +508,7 @@ export async function generateImages(input: ImageGenerationInput): Promise<Gener
                         aspect_ratio: input.aspectRatio || '1:1',
                         result_url: storageUrl,
                         status: 'completed',
-                        metadata: { promptSpec },
+                        metadata: { promptSpec, brandKitId: input.brandKitId },
                     })
                     .select()
                     .single();

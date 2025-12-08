@@ -954,7 +954,7 @@ return (
                           </span>
                           <span className="text-sm text-slate-700 capitalize">{element.type}</span>
                           {element.text && (
-                            <span className="text-sm text-slate-500 truncate flex-1">"{element.text}"</span>
+                            <span className="text-sm text-slate-500 truncate flex-1">&quot;{element.text}&quot;</span>
                           )}
                         </div>
                       )) || (
