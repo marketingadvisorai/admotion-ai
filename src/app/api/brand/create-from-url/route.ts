@@ -19,8 +19,9 @@ export async function POST(request: Request) {
         }
 
         return NextResponse.json({ success: true, data: result.data });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Create brand kit from URL API error:', error);
-        return NextResponse.json({ success: false, error: error.message || 'Internal server error' }, { status: 500 });
+        const message = error instanceof Error ? error.message : 'Internal server error';
+        return NextResponse.json({ success: false, error: message }, { status: 500 });
     }
 }

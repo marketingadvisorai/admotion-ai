@@ -12,7 +12,7 @@ const initialState = {
 };
 
 export default function OnboardingPage() {
-    const [state, formAction, isPending] = useActionState(async (prevState: any, formData: FormData) => {
+    const [state, formAction, isPending] = useActionState(async (_prevState: typeof initialState, formData: FormData) => {
         const result = await createOrganization(formData);
         if (result?.error) {
             return { error: result.error };

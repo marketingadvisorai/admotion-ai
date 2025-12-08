@@ -160,6 +160,46 @@ AdFlow AI is an AI-powered advertising platform for creating and managing video/
                │ provider_id      │
                │ created_at       │
                └──────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      IMAGE & CREATIVE ENTITIES                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────┐        ┌──────────────────────────┐
+│    image_generations     │        │  creative_chat_sessions  │
+├──────────────────────────┤        ├──────────────────────────┤
+│ id (PK)                  │        │ id (PK)                  │
+│ org_id (FK)              │        │ org_id (FK)              │
+│ campaign_id (FK, null)   │        │ user_id (FK)             │
+│ brand_kit_id (FK, null)  │        │ session_type (image/video│
+│ prompt (TEXT)            │        │ session_name             │
+│ prompt_used (TEXT)       │        │ messages (JSONB)         │
+│ result_url               │        │ proposed_copy (JSONB)    │
+│ style                    │        │ brand_kit_id (FK, null)  │
+│ aspect_ratio             │        │ selected_models (JSONB)  │
+│ provider (openai/gemini) │        │ expires_at               │
+│ model                    │        │ created_at               │
+│ status (pending/done/err)│        │ updated_at               │
+│ error_message            │        └──────────────────────────┘
+│ metadata (JSONB)         │
+│ session_id (FK, null)    │──────────────────┘
+│ created_at               │
+│ updated_at               │
+└──────────────────────────┘
+
+┌──────────────────────────┐
+│      brand_memories      │
+├──────────────────────────┤
+│ id (PK)                  │
+│ org_id (FK)              │
+│ brand_kit_id (FK)        │
+│ memory_type              │
+│ content (TEXT)           │
+│ embedding (VECTOR)       │
+│ metadata (JSONB)         │
+│ created_at               │
+│ updated_at               │
+└──────────────────────────┘
 ```
 
 ---
@@ -186,6 +226,19 @@ Poll Status → Upload to Storage → Update DB → Display Result
 ```
 Any LLM Call → llm/usage.ts → Insert llm_usage_events → Calculate Cost → 
 Update Organization Credits (if applicable)
+```
+
+### 5. Image Ad Generation Flow
+```
+User Chat → Brand Kit Selection → AI Chat (propose copy) → Confirm Copy →
+Generate Image (structured JSON prompt) → Store in Supabase Storage → 
+Update image_generations → Display Result → Quick Actions (iterate/export)
+```
+
+### 6. Creative Chat Session Flow
+```
+User Message → Load/Create Session → Save to LocalStorage (immediate) →
+Debounced Save to Supabase → Restore on Page Load → 10-day Retention
 ```
 
 ---
@@ -292,4 +345,4 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 ---
 
-*Last Updated: December 5, 2025*
+*Last Updated: December 8, 2025*

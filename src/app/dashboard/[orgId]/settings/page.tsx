@@ -116,7 +116,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ orgId
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
-                                {members?.map((member: any) => (
+                                {members?.map((member: { id: string; role: string; created_at: string; user?: { avatar_url?: string; full_name?: string } }) => (
                                     <div key={member.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg">
                                         <div className="flex items-center gap-3">
                                             <Avatar>

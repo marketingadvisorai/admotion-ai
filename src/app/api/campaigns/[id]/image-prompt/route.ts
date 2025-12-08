@@ -33,8 +33,9 @@ export async function GET(
     const tone = strategy.tone || '';
     const audience = strategy.target_audience || '';
 
-    const primaryColor = brandKit?.colors?.find((c: any) => c.type === 'primary')?.value || '#111827';
-    const secondaryColor = brandKit?.colors?.find((c: any) => c.type === 'secondary')?.value || '#F3F4F6';
+    interface ColorDef { type: string; value: string }
+    const primaryColor = brandKit?.colors?.find((c: ColorDef) => c.type === 'primary')?.value || '#111827';
+    const secondaryColor = brandKit?.colors?.find((c: ColorDef) => c.type === 'secondary')?.value || '#F3F4F6';
     const brandName = brandKit?.business_name || brandKit?.name || campaign.name;
     const body =
         brandKit?.description ||

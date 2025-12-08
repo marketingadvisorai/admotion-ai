@@ -25,7 +25,7 @@ import { ImageGeneration, ImageAspectRatio } from '@/modules/image-generation/ty
 import { ImageProvider } from '@/modules/image-generation/types';
 import Image from 'next/image';
 
-type AspectRatio = '3:2' | '1:1' | '2:3';
+export type AspectRatio = '3:2' | '1:1' | '2:3';
 type CreativeMode = 'chat' | 'make';
 
 // Available image generation models
@@ -65,7 +65,7 @@ interface ChatMessage {
 }
 
 // Overlay element that will be added to the image
-interface OverlayElement {
+export interface OverlayElement {
   type: 'headline' | 'button' | 'logo' | 'badge' | 'tagline';
   text?: string;
   position?: string;
@@ -73,7 +73,7 @@ interface OverlayElement {
 }
 
 // Proposed ad copy from chat - user confirms before generating
-interface ProposedCopy {
+export interface ProposedCopy {
   headline: string;
   ctaText: string;
   imageDirection: string;
@@ -258,6 +258,7 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
         brandName: selectedBrandKit.name,
         businessName: selectedBrandKit.business_name,
         description: selectedBrandKit.description,
+        logoUrl: selectedBrandKit.logo_url,
         colors: selectedBrandKit.colors?.map((c) => c.value).filter(Boolean),
         brandVoice: selectedBrandKit.strategy?.brand_voice,
         targetAudience: selectedBrandKit.strategy?.target_audience,
@@ -268,6 +269,7 @@ export function ImageGenerator({ displayName, brandKits, llmProfiles, orgId }: I
       return {
         businessName: activeBrand.business_name,
         description: activeBrand.description,
+        logoUrl: activeBrand.logo_url,
         colors: activeBrand.colors?.map((c) => c.value).filter(Boolean),
         brandVoice: activeBrand.strategy?.brand_voice,
         targetAudience: activeBrand.strategy?.target_audience,
@@ -379,10 +381,18 @@ IMPORTANT: Focus ONLY on what text/elements will be OVERLAID on the image:
 - HEADLINE: The main text displayed prominently on the image
 - CTA: The button text (e.g., "Shop Now", "Learn More")
 - OVERLAY_ELEMENTS: Which visual elements to include on the image
+ - LOGO: Always include the brand logo badge when available (top-right or bottom-right with padding)
+ - BADGE/TAGLINE: Only if they improve scannability
+
+Overlay rules:
+- Max 45 chars for headline, ultra concise CTA
+- High contrast (WCAG AA), safe padding, mobile-safe margins
+- Avoid long paragraphs; no body copy
+- Keep background clear behind text; avoid busy areas
 
 Do NOT suggest "primary text" or body copy - we only need image overlay elements.
 Always propose when you have a clear idea. Ask clarifying questions if needed first.
-Be concise and actionable.`;
+Be concise, concrete, and layout-aware.`;
       
       if (brandContext) {
         systemPrompt += `\n\nBrand Context:\n- Brand: ${brandContext.businessName || brandContext.brandName || 'Unknown'}\n`;
@@ -405,6 +415,7 @@ Be concise and actionable.`;
       });
 
       const data = await res.json();
+
       if (data.content) {
         const assistantMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
@@ -422,18 +433,25 @@ Be concise and actionable.`;
           const cta = copyText.match(/CTA:\s*(.+)/)?.[1]?.trim() || '';
           const imageDir = copyText.match(/IMAGE DIRECTION:\s*(.+)/)?.[1]?.trim() || '';
           const overlayStr = copyText.match(/OVERLAY_ELEMENTS:\s*(.+)/)?.[1]?.trim() || 'headline, button';
-          
+
           // Parse overlay elements from comma-separated list
           const overlayTypes = overlayStr.split(',').map((s: string) => s.trim().toLowerCase());
           const overlayElements: OverlayElement[] = overlayTypes.map((type: string) => {
-            if (type === 'headline') return { type: 'headline' as const, text: headline };
-            if (type === 'button' || type === 'cta') return { type: 'button' as const, text: cta };
-            if (type === 'logo') return { type: 'logo' as const };
-            if (type === 'badge') return { type: 'badge' as const };
-            if (type === 'tagline') return { type: 'tagline' as const };
-            return { type: 'headline' as const, text: type };
+            if (type === 'headline') return { type: 'headline', text: headline };
+            if (type === 'button' || type === 'cta') return { type: 'button', text: cta };
+            if (type === 'logo') return { type: 'logo' };
+            if (type === 'badge') return { type: 'badge' };
+            if (type === 'tagline') return { type: 'tagline' };
+            return { type: 'headline', text: type };
           });
-          
+
+          // Always add logo if brand has one and it's not already included
+          const hasLogoOverlay = overlayElements.some((el) => el.type === 'logo');
+          const hasBrandLogo = Boolean(brandContext?.logoUrl);
+          if (hasBrandLogo && !hasLogoOverlay) {
+            overlayElements.push({ type: 'logo' });
+          }
+
           if (headline) {
             setProposedCopy({
               headline,
@@ -444,7 +462,9 @@ Be concise and actionable.`;
             });
           }
         }
+      }
 
+      if (data.error) {
         setError(data.error);
       }
     } catch (err) {
@@ -457,6 +477,10 @@ Be concise and actionable.`;
 
   // Generate image handler
   const handleGenerate = async () => {
+    if (!activeBrand) {
+      setError('Select a brand kit or run brand analysis before generating to ensure logo/colors are applied.');
+      return;
+    }
     if (!proposedCopy?.confirmed) {
       setError('Confirm headline, CTA, and image direction before generating.');
       return;
@@ -471,6 +495,7 @@ Be concise and actionable.`;
       
       // Structured JSON prompt for better layout fidelity
       const colors = activeBrand?.colors?.map((c) => c.value).filter(Boolean).slice(0, 4);
+      const logoUrl = activeBrand?.logo_url || brandContext?.logoUrl;
       const voice = activeBrand?.strategy?.brand_voice || '';
       const targetAudience = activeBrand?.strategy?.target_audience || '';
       const promptSpec = {
@@ -487,19 +512,21 @@ Be concise and actionable.`;
         aspect: selectedAspect,
         brand: {
           colors,
+          logo_url: logoUrl,
           voice: voice || undefined,
           target_audience: targetAudience || undefined,
         },
         layout: {
-          logo: 'Place logo as a badge in top-right or bottom-right with padding, no stretching.',
-          hierarchy: 'Headline above body, clear CTA button, generous spacing, mobile-safe margins.',
-          text_rules: 'Headline <= 45 characters, body concise, CTA standard (e.g., Learn More, Shop Now).',
-          background: 'Avoid noisy/low-contrast areas behind text; keep CTA high-contrast.',
+          logo: 'If logo_url provided, place logo as a badge top-right or bottom-right with padding, no stretching, preserve aspect.',
+          hierarchy: 'Headline above CTA button, generous spacing, mobile-safe margins.',
+          text_rules: 'Headline <= 45 characters, no body copy, CTA standard (e.g., Learn More, Shop Now).',
+          background: 'Avoid noisy/low-contrast areas behind text; keep CTA high-contrast and readable.',
         },
         accessibility: {
           contrast: 'Meet WCAG AA contrast for text and CTA.',
           legibility: 'Use clean fonts, avoid tiny text, keep padding around text and buttons.',
         },
+        references: referenceImages.length ? referenceImages.slice(0, 3) : undefined,
       };
       const enhancedPrompt = `${JSON.stringify(promptSpec, null, 2)}\nGenerate a professional digital ad image following this spec exactly.`;
 
@@ -879,6 +906,17 @@ return (
           </div>
         </div>
 
+        {/* Brand requirement note */}
+        {!activeBrand && (
+          <div className="mx-6 mt-3 mb-1 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800 text-sm">
+            <AlertCircle className="size-4 mt-0.5" />
+            <div>
+              <p className="font-medium">Select a brand kit or run an analysis before generating.</p>
+              <p className="text-xs text-amber-700">Logos and colors auto-apply for better, on-brand layouts.</p>
+            </div>
+          </div>
+        )}
+
         {/* Progress */}
         {(isGenerating || generationProgress > 0) && (
           <div className="px-6 pt-3">
@@ -918,6 +956,37 @@ return (
                     </span>
                   )}
                 </div>
+
+                {/* Brand preview */}
+                {activeBrand && (
+                  <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white/70 px-3 py-2">
+                    {activeBrand.logo_url ? (
+                      <div className="relative h-10 w-10 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                        <Image src={activeBrand.logo_url} alt="Brand logo" fill className="object-contain p-1" />
+                      </div>
+                    ) : (
+                      <div className="h-10 w-10 rounded-lg border border-dashed border-slate-200 flex items-center justify-center text-[10px] text-slate-400">
+                        Logo
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-slate-900 line-clamp-1">
+                        {activeBrand.business_name || 'Brand'}
+                      </p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        {(activeBrand.colors || []).slice(0, 4).map((c, idx) => (
+                          <span
+                            key={idx}
+                            className="h-4 w-4 rounded-full border border-slate-200"
+                            style={{ backgroundColor: c.value }}
+                            title={c.value}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <span className="text-[11px] text-slate-500">On-brand overlays enforced</span>
+                  </div>
+                )}
 
                 <div className="grid gap-3">
                   <div>
@@ -1273,6 +1342,42 @@ return (
                 </button>
               </div>
             </div>
+
+            {/* Reference images preview */}
+            {referenceImages.length > 0 && (
+              <div className="w-full space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-medium text-slate-600 uppercase tracking-wide">Reference images</span>
+                  <button
+                    type="button"
+                    onClick={() => setReferenceImages([])}
+                    className="text-[11px] text-slate-500 hover:text-slate-700"
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {referenceImages.map((ref, idx) => (
+                    <div key={ref} className="relative h-14 w-14 flex-shrink-0 rounded-lg overflow-hidden border border-slate-200">
+                      <Image src={ref} alt={`Reference ${idx + 1}`} fill className="object-cover" />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setReferenceImages((prev) => prev.filter((url) => url !== ref))
+                        }
+                        className="absolute top-0 right-0 m-0.5 rounded-full bg-white/80 text-slate-700 hover:bg-white shadow-sm"
+                        aria-label="Remove reference"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-slate-500">
+                  These images are included in the prompt to guide the model’s layout and style.
+                </p>
+              </div>
+            )}
 
             {/* Text Input */}
             <div className="relative">

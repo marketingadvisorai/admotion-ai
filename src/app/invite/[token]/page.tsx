@@ -7,7 +7,7 @@ import AcceptInviteForm from '@/components/invitations/accept-invite-form';
 
 export default async function InvitePage({ params }: { params: Promise<{ token: string }> }) {
     const { token } = await params;
-    const invitation: any = await getInvitationByToken(token);
+    const invitation = await getInvitationByToken(token) as { status?: string; role?: string; organization?: { name?: string } } | null;
     const user = await getCurrentUser();
 
     if (!invitation || invitation.status !== 'pending') {

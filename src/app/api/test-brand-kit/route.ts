@@ -26,7 +26,8 @@ export async function GET() {
     try {
         const result = await createBrandKitAction(mockData);
         return NextResponse.json(result);
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Internal server error';
+        return NextResponse.json({ success: false, error: message }, { status: 500 });
     }
 }

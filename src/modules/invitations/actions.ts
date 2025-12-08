@@ -13,8 +13,9 @@ export async function inviteMemberAction(formData: FormData) {
         await createInvitation({ orgId, email, role });
         revalidatePath(`/dashboard/${orgId}/settings`);
         return { success: true };
-    } catch (error: any) {
-        return { error: error.message };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to send invitation';
+        return { error: message };
     }
 }
 
@@ -26,8 +27,9 @@ export async function revokeInvitationAction(formData: FormData) {
         await deleteInvitation(id);
         revalidatePath(`/dashboard/${orgId}/settings`);
         return { success: true };
-    } catch (error: any) {
-        return { error: error.message };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to revoke invitation';
+        return { error: message };
     }
 }
 
@@ -46,8 +48,9 @@ export async function acceptInvitationAction(formData: FormData) {
     let orgId;
     try {
         orgId = await acceptInvitation(token, user.id);
-    } catch (error: any) {
-        return { error: error.message };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to accept invitation';
+        return { error: message };
     }
 
     redirect(`/dashboard/${orgId}`);

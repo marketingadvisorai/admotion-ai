@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/db/server';
 import { revalidatePath } from 'next/cache';
-import { LlmProfile } from './types';
+// Types imported when needed
 
 export interface UpsertLlmProfileInput {
     id?: string;
@@ -34,7 +34,7 @@ export async function upsertLlmProfileAction(input: UpsertLlmProfileInput) {
             updated_at: new Date().toISOString(),
         };
 
-        let query = supabase.from('llm_profiles');
+        const query = supabase.from('llm_profiles');
         if (input.id) {
             const { error } = await query.update(payload).eq('id', input.id);
             if (error) throw error;
@@ -45,8 +45,9 @@ export async function upsertLlmProfileAction(input: UpsertLlmProfileInput) {
 
         revalidatePath('/admin/llm');
         return { success: true };
-    } catch (error: any) {
-        return { success: false, error: error.message };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to save LLM profile';
+        return { success: false, error: message };
     }
 }
 
@@ -62,8 +63,8 @@ export async function deleteLlmProfileAction(id: string) {
 
         revalidatePath('/admin/llm');
         return { success: true };
-    } catch (error: any) {
-        return { success: false, error: error.message };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to delete LLM profile';
+        return { success: false, error: message };
     }
 }
-

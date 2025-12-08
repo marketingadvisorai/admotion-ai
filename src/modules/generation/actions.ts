@@ -23,7 +23,8 @@ export async function generateVideoAction(formData: FormData) {
 
         revalidatePath(`/dashboard/${orgId}/campaigns/${campaignId}`);
         return { success: true };
-    } catch (error: any) {
-        return { error: error.message };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to generate video';
+        return { error: message };
     }
 }

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/db/server';
-import { GenerationStatus, VideoGenerationProvider } from './types';
+// GenerationStatus and VideoGenerationProvider available in ./types if needed
 import { getProvider } from './providers/factory';
 import { cache } from 'react';
 import { uploadFromUrl } from '@/lib/storage';
@@ -50,7 +50,7 @@ export async function createGenerationJob(input: CreateGenerationInput) {
             .eq('id', job.id);
 
         return { success: true, jobId: job.id };
-    } catch (err: any) {
+    } catch (err) {
         // Mark as failed if provider call fails
         await supabase
             .from('video_generations')

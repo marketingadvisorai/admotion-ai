@@ -7,7 +7,7 @@ import {
     deleteBrandMemory,
 } from '@/modules/creative-studio/services/brand-memory.service';
 
-async function assertOrgAccess(supabase: any, orgId: string, userId: string) {
+async function assertOrgAccess(supabase: Awaited<ReturnType<typeof createClient>>, orgId: string, userId: string) {
     const { data: membership, error } = await supabase
         .from('organization_memberships')
         .select('role')
@@ -43,8 +43,8 @@ export async function GET(request: NextRequest) {
 
         const brandMemory = await getActiveBrandMemory(orgId);
         return NextResponse.json({ success: true, brandMemory });
-    } catch (error: any) {
-        if (error.message === 'access-denied') {
+    } catch (error) {
+        if (error instanceof Error && error.message === 'access-denied') {
             return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
         }
         console.error('Get brand memory error:', error);
@@ -69,8 +69,8 @@ export async function PUT(request: NextRequest) {
 
         const brandMemory = await updateBrandMemory(orgId, updates);
         return NextResponse.json({ success: true, brandMemory });
-    } catch (error: any) {
-        if (error.message === 'access-denied') {
+    } catch (error) {
+        if (error instanceof Error && error.message === 'access-denied') {
             return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
         }
         console.error('Update brand memory error:', error);
@@ -96,8 +96,8 @@ export async function DELETE(request: NextRequest) {
 
         await deleteBrandMemory(orgId, id);
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        if (error.message === 'access-denied') {
+    } catch (error) {
+        if (error instanceof Error && error.message === 'access-denied') {
             return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
         }
         console.error('Delete brand memory error:', error);

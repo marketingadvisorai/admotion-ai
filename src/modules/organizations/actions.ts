@@ -27,8 +27,9 @@ export async function getOrgSecretsAction(orgId: string) {
         }));
 
         return { success: true, data: maskedSecrets };
-    } catch (error: any) {
-        return { success: false, error: error.message };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to get secrets';
+        return { success: false, error: message };
     }
 }
 
@@ -51,8 +52,9 @@ export async function saveOrgSecretAction(orgId: string, name: string, value: st
 
         revalidatePath(`/dashboard/${orgId}/settings`);
         return { success: true };
-    } catch (error: any) {
-        return { success: false, error: error.message };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to save secret';
+        return { success: false, error: message };
     }
 }
 
@@ -69,8 +71,9 @@ export async function deleteOrgSecretAction(orgId: string, name: string) {
 
         revalidatePath(`/dashboard/${orgId}/settings`);
         return { success: true };
-    } catch (error: any) {
-        return { success: false, error: error.message };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to delete secret';
+        return { success: false, error: message };
     }
 }
 

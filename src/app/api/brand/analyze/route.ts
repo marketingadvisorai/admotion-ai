@@ -27,8 +27,9 @@ export async function POST(request: Request) {
                 strategy: identity.strategy,
             }
         });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Brand analyze API error:', error);
-        return NextResponse.json({ success: false, error: error.message || 'Failed to analyze brand' }, { status: 500 });
+        const message = error instanceof Error ? error.message : 'Failed to analyze brand';
+        return NextResponse.json({ success: false, error: message }, { status: 500 });
     }
 }
