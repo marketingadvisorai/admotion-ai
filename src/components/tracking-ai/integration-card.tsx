@@ -49,9 +49,16 @@ export function IntegrationCard({
     
     setConnecting(true);
     try {
-      const endpoint = provider === 'google_ads_mcp'
-        ? '/api/tracking-ai/mcp/ads/connect'
-        : '/api/tracking-ai/mcp/analytics/connect';
+      let endpoint: string;
+      if (provider === 'google_ads_mcp') {
+        endpoint = '/api/tracking-ai/mcp/ads/connect';
+      } else if (provider === 'google_analytics_mcp') {
+        endpoint = '/api/tracking-ai/mcp/analytics/connect';
+      } else if (provider === 'google_tag_manager') {
+        endpoint = '/api/tracking-ai/mcp/gtm/connect';
+      } else {
+        throw new Error(`Unknown provider: ${provider}`);
+      }
 
       const response = await fetch(endpoint, {
         method: 'POST',

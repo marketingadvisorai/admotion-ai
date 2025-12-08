@@ -18,6 +18,7 @@ export * from './types';
 // Providers
 export { googleAdsMcpService } from './providers/google-ads-mcp';
 export { googleAnalyticsMcpService } from './providers/google-analytics-mcp';
+export { googleTagManagerService } from './providers/google-tag-manager';
 
 // Services
 export { trackingAiPlannerService } from './services/ai-planner';

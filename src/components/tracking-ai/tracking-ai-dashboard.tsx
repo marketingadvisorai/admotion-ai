@@ -444,7 +444,6 @@ export function TrackingAIDashboard({ orgId }: TrackingAIDashboardProps) {
               whatWeNeed="Access to your GTM container with publish permissions."
               whyWeNeed="To deploy tracking code changes without requiring developer assistance."
               whatWeDo="Create and publish optimized tags and triggers for your tracking needs."
-              comingSoon
             />
           </div>
         </TabsContent>
