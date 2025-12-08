@@ -56,6 +56,8 @@ export function IntegrationCard({
         endpoint = '/api/tracking-ai/mcp/analytics/connect';
       } else if (provider === 'google_tag_manager') {
         endpoint = '/api/tracking-ai/mcp/gtm/connect';
+      } else if (provider === 'facebook_pixel') {
+        endpoint = '/api/tracking-ai/facebook/connect';
       } else {
         throw new Error(`Unknown provider: ${provider}`);
       }

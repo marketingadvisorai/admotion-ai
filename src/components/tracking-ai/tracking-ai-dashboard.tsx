@@ -445,6 +445,24 @@ export function TrackingAIDashboard({ orgId }: TrackingAIDashboardProps) {
               whyWeNeed="To deploy tracking code changes without requiring developer assistance."
               whatWeDo="Create and publish optimized tags and triggers for your tracking needs."
             />
+
+            <IntegrationCard
+              orgId={orgId}
+              provider="facebook_pixel"
+              title="Facebook Pixel & CAPI"
+              description="Connect Facebook for Pixel tracking and Conversions API."
+              integration={integrations.find(i => i.provider === 'facebook_pixel')}
+              onConnect={fetchData}
+              features={[
+                'Install Facebook Pixel',
+                'Server-side Conversions API',
+                'Event deduplication',
+                'Pixel health monitoring',
+              ]}
+              whatWeNeed="Access to your Facebook Ads account and business."
+              whyWeNeed="To send events via Pixel and CAPI for better attribution."
+              whatWeDo="Set up browser and server-side tracking with automatic deduplication."
+            />
           </div>
         </TabsContent>
 
